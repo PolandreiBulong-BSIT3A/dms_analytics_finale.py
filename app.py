@@ -91,13 +91,36 @@ st.markdown("""
     section[data-testid="stSidebar"] {
         background: #f8f9fa;
         border-right: 1px solid #e5e7eb;
+        padding: 0.75rem 0.75rem; /* better breathing room */
     }
     section[data-testid="stSidebar"] h1, 
     section[data-testid="stSidebar"] h2,
     section[data-testid="stSidebar"] h3 { 
         color: #1f2937;
-        font-weight: 600;
+        font-weight: 700;
+        letter-spacing: 0.2px;
+        margin-bottom: 0.25rem;
     }
+    section[data-testid="stSidebar"] hr { border-color: #e5e7eb; }
+    
+    /* Improve spacing of controls */
+    section[data-testid="stSidebar"] .stSelectbox,
+    section[data-testid="stSidebar"] .stMultiSelect,
+    section[data-testid="stSidebar"] .stRadio,
+    section[data-testid="stSidebar"] .stCheckbox,
+    section[data-testid="stSidebar"] .stDateInput {
+        margin-bottom: 0.5rem;
+    }
+    
+    /* Accessible focus outlines */
+    section[data-testid="stSidebar"] *:focus {
+        outline: 2px solid #2563eb !important; /* blue focus */
+        outline-offset: 2px;
+        border-radius: 6px;
+    }
+    
+    /* Improve clickable labels */
+    section[data-testid="stSidebar"] label { cursor: pointer; }
     
     /* Header */
     .dashboard-header {
@@ -273,11 +296,15 @@ requests_q = """
 data = fetch_many(engine_uri, {"docs": docs_q, "reqs": requests_q})
 
 # Global chart style
+# 20-color, colorblind-friendly qualitative palette (mix of Plotly + Tableau)
 PALETTE = [
-    "#636EFA", "#EF553B", "#00CC96", "#AB63FA", "#FFA15A",
-    "#19D3F3", "#FF6692", "#B6E880", "#FF97FF", "#FECB52"
+    "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd",
+    "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf",
+    "#4e79a7", "#f28e2b", "#59a14f", "#e15759", "#b07aa1",
+    "#ff9da7", "#9c755f", "#bab0ab", "#76b7b2", "#edc948"
 ]
 px.defaults.template = "plotly_dark"
+px.defaults.color_discrete_sequence = PALETTE
 
 # Apply year filter to data
 docs_df_full = data["docs"].copy()
