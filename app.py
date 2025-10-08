@@ -140,13 +140,14 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### 🏢 Department Filter")
     
-    # Department filter options
-    department_options = ["All Departments", "CAS", "CMBE", "CTE", "LHS", "Graduate School", "Others"]
-    selected_department = st.selectbox(
-        "Select Department",
+    # Department filter options (multiselect)
+    department_options = ["CAS", "CMBE", "CTE", "LHS", "Graduate School", "Others"]
+    selected_departments = st.multiselect(
+        "Select Departments",
         options=department_options,
-        index=0,
-        label_visibility="collapsed"
+        default=[],
+        label_visibility="collapsed",
+        placeholder="Select departments..."
     )
     
     st.markdown("---")
@@ -292,21 +293,25 @@ else:
 # Update sidebar filters with dynamic options (need to rerun sidebar logic)
 # This is a workaround - filters will update on next interaction
 
-# Filter by department
-if selected_department != "All Departments":
-    if not docs_df_full.empty and "department_codes" in docs_df_full.columns:
-        if selected_department == "Others":
-            # Filter for user-specific documents (SPECIFIC_USERS, ROLE_DEPARTMENT, etc.)
-            docs_df_full = docs_df_full[
+# Filter by departments (multiselect)
+if selected_departments and not docs_df_full.empty and "department_codes" in docs_df_full.columns:
+    dept_mask = pd.Series([False] * len(docs_df_full), index=docs_df_full.index)
+    
+    for dept in selected_departments:
+        if dept == "Others":
+            # Include user-specific documents
+            dept_mask |= (
                 (docs_df_full["visibility"].isin(["SPECIFIC_USERS", "SPECIFIC_ROLES", "ROLE_DEPARTMENT"])) |
                 (docs_df_full["department_codes"].isna())
-            ]
+            )
         else:
-            # Filter for specific department code
-            docs_df_full = docs_df_full[
+            # Include documents with this department code
+            dept_mask |= (
                 (docs_df_full["department_codes"].notna()) &
-                (docs_df_full["department_codes"].str.contains(selected_department, na=False))
-            ]
+                (docs_df_full["department_codes"].str.contains(dept, na=False))
+            )
+    
+    docs_df_full = docs_df_full[dept_mask]
 
 # Filter by folder
 if selected_folder != "All Folders":
@@ -332,7 +337,7 @@ if page == "📈 Dashboard":
     with col_h1:
         st.markdown('<div class="dashboard-title">Document Management Analytics</div>', unsafe_allow_html=True)
         year_display = selected_year if selected_year != "All Years" else "All Time"
-        dept_display = selected_department if selected_department != "All Departments" else "All Departments"
+        dept_display = ", ".join(selected_departments) if selected_departments else "All Departments"
         st.markdown(f'<div class="dashboard-subtitle">{year_display} - {dept_display}</div>', unsafe_allow_html=True)
     with col_h2:
         st.markdown(f"<div style='text-align: right; color: #6B7280; font-size: 0.9rem;'>Total Documents<br/><span style='font-size: 1.5rem; font-weight: 600; color: #111827;'>{len(docs_df_full):,}</span></div>", unsafe_allow_html=True)
@@ -431,7 +436,7 @@ if page == "📈 Dashboard":
 elif page == "📄 Documents Analytics":
     # Header
     year_display = selected_year if selected_year != "All Years" else "All Time"
-    dept_display = selected_department if selected_department != "All Departments" else "All Departments"
+    dept_display = ", ".join(selected_departments) if selected_departments else "All Departments"
     st.markdown(f"### 📄 Document Analytics - {year_display} - {dept_display}")
     st.markdown("*Visual insights into your document ecosystem: status trends, distribution patterns, and intake analysis.*")
     
@@ -567,7 +572,7 @@ elif page == "📄 Documents Analytics":
 elif page == "📋 Documents Table":
     # Header
     year_display = selected_year if selected_year != "All Years" else "All Time"
-    dept_display = selected_department if selected_department != "All Departments" else "All Departments"
+    dept_display = ", ".join(selected_departments) if selected_departments else "All Departments"
     st.markdown(f"### 📋 Documents Table - {year_display} - {dept_display}")
     st.markdown("*Complete list of documents with all details in tabular format.*")
     
