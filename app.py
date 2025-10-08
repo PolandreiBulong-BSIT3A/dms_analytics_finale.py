@@ -153,23 +153,27 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### 📁 Folder Filter")
     
-    # Folder filter (will be populated from data)
-    selected_folder = st.selectbox(
-        "Select Folder",
-        options=["All Folders"],
-        index=0,
-        label_visibility="collapsed"
+    # Folder filter (multiselect - will be populated dynamically)
+    selected_folders = st.multiselect(
+        "Select Folders",
+        options=[],
+        default=[],
+        label_visibility="collapsed",
+        placeholder="Select folders...",
+        key="folder_filter"
     )
     
     st.markdown("---")
     st.markdown("### 📄 Document Type Filter")
     
-    # Document type filter
-    selected_doc_type = st.selectbox(
-        "Select Document Type",
-        options=["All Types"],
-        index=0,
-        label_visibility="collapsed"
+    # Document type filter (multiselect)
+    selected_doc_types = st.multiselect(
+        "Select Document Types",
+        options=[],
+        default=[],
+        label_visibility="collapsed",
+        placeholder="Select document types...",
+        key="doctype_filter"
     )
     
     st.markdown("---")
@@ -183,6 +187,21 @@ with st.sidebar:
         index=0,
         label_visibility="collapsed"
     )
+    
+    st.markdown("---")
+    st.markdown("### 📅 Date Range Filter")
+    
+    # Date range filter
+    use_date_range = st.checkbox("Enable date range filter", value=False)
+    if use_date_range:
+        col_d1, col_d2 = st.columns(2)
+        with col_d1:
+            start_date = st.date_input("From", value=None, key="start_date")
+        with col_d2:
+            end_date = st.date_input("To", value=None, key="end_date")
+    else:
+        start_date = None
+        end_date = None
     
     st.markdown("---")
     st.caption(f"Last updated: {datetime.now().strftime('%b %d, %Y %H:%M')}")
@@ -283,15 +302,18 @@ if selected_year != "All Years":
 # Populate dynamic filter options from data
 if not docs_df_full.empty:
     # Get unique folders
-    folder_options = ["All Folders"] + sorted(docs_df_full["folder_name"].dropna().unique().tolist())
+    folder_options = sorted(docs_df_full["folder_name"].dropna().unique().tolist())
     # Get unique document types
-    doc_type_options = ["All Types"] + sorted(docs_df_full["doc_type_name"].dropna().unique().tolist())
+    doc_type_options = sorted(docs_df_full["doc_type_name"].dropna().unique().tolist())
+    
+    # Update multiselect options using session state
+    if folder_options and "folder_filter" in st.session_state:
+        st.session_state.folder_filter_options = folder_options
+    if doc_type_options and "doctype_filter" in st.session_state:
+        st.session_state.doctype_filter_options = doc_type_options
 else:
-    folder_options = ["All Folders"]
-    doc_type_options = ["All Types"]
-
-# Update sidebar filters with dynamic options (need to rerun sidebar logic)
-# This is a workaround - filters will update on next interaction
+    folder_options = []
+    doc_type_options = []
 
 # Filter by departments (multiselect)
 if selected_departments and not docs_df_full.empty and "department_codes" in docs_df_full.columns:
@@ -313,21 +335,27 @@ if selected_departments and not docs_df_full.empty and "department_codes" in doc
     
     docs_df_full = docs_df_full[dept_mask]
 
-# Filter by folder
-if selected_folder != "All Folders":
-    if not docs_df_full.empty and "folder_name" in docs_df_full.columns:
-        docs_df_full = docs_df_full[docs_df_full["folder_name"] == selected_folder]
+# Filter by folders (multiselect)
+if selected_folders and not docs_df_full.empty and "folder_name" in docs_df_full.columns:
+    docs_df_full = docs_df_full[docs_df_full["folder_name"].isin(selected_folders)]
 
-# Filter by document type
-if selected_doc_type != "All Types":
-    if not docs_df_full.empty and "doc_type_name" in docs_df_full.columns:
-        docs_df_full = docs_df_full[docs_df_full["doc_type_name"] == selected_doc_type]
+# Filter by document types (multiselect)
+if selected_doc_types and not docs_df_full.empty and "doc_type_name" in docs_df_full.columns:
+    docs_df_full = docs_df_full[docs_df_full["doc_type_name"].isin(selected_doc_types)]
 
 # Filter by status
 if selected_status != "All Status":
     if not docs_df_full.empty and "status" in docs_df_full.columns:
         status_value = selected_status.lower()
         docs_df_full = docs_df_full[docs_df_full["status"] == status_value]
+
+# Filter by date range
+if use_date_range and start_date and end_date:
+    if not docs_df_full.empty and "date_received" in docs_df_full.columns:
+        docs_df_full = docs_df_full[
+            (docs_df_full["date_received"].dt.date >= start_date) &
+            (docs_df_full["date_received"].dt.date <= end_date)
+        ]
 
 # Page routing based on sidebar selection
 if page == "📈 Dashboard":
