@@ -89,13 +89,15 @@ st.markdown("""
     
     /* Sidebar styling */
     section[data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #065f46 0%, #047857 100%);
-        color: white;
+        background: #f8f9fa;
+        border-right: 1px solid #e5e7eb;
     }
-    section[data-testid="stSidebar"] .css-1d391kg { color: white; }
     section[data-testid="stSidebar"] h1, 
     section[data-testid="stSidebar"] h2,
-    section[data-testid="stSidebar"] h3 { color: white; }
+    section[data-testid="stSidebar"] h3 { 
+        color: #1f2937;
+        font-weight: 600;
+    }
     
     /* Header */
     .dashboard-header {
@@ -112,8 +114,8 @@ st.markdown("""
 
 # Sidebar Navigation
 with st.sidebar:
-    st.markdown("<h2 style='color: white; text-align: center;'>📊 ISPSC DMS</h2>", unsafe_allow_html=True)
-    st.markdown("<p style='color: #86efac; text-align: center; font-size: 0.85rem;'>Document Management System</p>", unsafe_allow_html=True)
+    st.markdown("<h2 style='color: #1f2937; text-align: center; margin-bottom: 0;'>📊 ISPSC DMS</h2>", unsafe_allow_html=True)
+    st.markdown("<p style='color: #6b7280; text-align: center; font-size: 0.85rem; margin-top: 0.25rem;'>Document Management System</p>", unsafe_allow_html=True)
     st.markdown("---")
     
     page = st.radio(
@@ -291,7 +293,7 @@ if page == "📈 Dashboard":
     with m2:
         st.metric("Active Docs", f"{active_docs:,}", help="Currently active documents")
     with m3:
-        st.metric("Deleted Docs", f"{deleted_docs:,}", help="Deleted documents")
+        st.metric("Permanently Deleted Docs", f"{deleted_docs:,}", help="Deleted documents")
     with m4:
         st.metric("Active Rate", f"{active_pct:.1f}%", help="Percentage of active documents")
     with m5:
