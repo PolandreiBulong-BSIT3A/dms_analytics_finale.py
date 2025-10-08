@@ -70,7 +70,7 @@ def apply_sort(df: pd.DataFrame, sort_col: Optional[str], ascending: bool) -> pd
 # ---------------
 st.set_page_config(page_title="ISPSC Tagudin DMS Analytics", layout="wide")
 st.title("ISPSC Tagudin DMS Analytics Dashboard")
-st.caption("Users • Documents • Announcements")
+st.caption("Documents Analytics")
 
 # Refresh control
 hdr1, hdr2 = st.columns([0.2, 1])
@@ -100,15 +100,6 @@ engine_uri = st.session_state.engine_uri
 engine = get_engine(engine_uri)
 
 # Centralize queries and fetch in one connection
-dept_q = """
-    SELECT d.department_id, d.name AS department_name, d.code
-    FROM departments d
-"""
-users_q = """
-    SELECT u.user_id, u.Username, u.firstname, u.lastname, u.user_email,
-           u.role, u.status, u.is_verified, u.department_id, u.created_at, u.updated_at
-    FROM dms_user u
-"""
 docs_q = """
     SELECT d.doc_id,
            d.doc_type,
@@ -129,14 +120,26 @@ docs_q = """
     LEFT JOIN folders f ON d.folder_id = f.folder_id
     LEFT JOIN document_types t ON d.doc_type = t.type_id
 """
-ann_q = """
-    SELECT announcement_id, title, visible_to_all, status, publish_at, expire_at,
-           created_by_name, created_at, updated_at
-    FROM announcements
+requests_q = """
+    SELECT da.document_action_id,
+           da.doc_id,
+           d.title AS document_title,
+           da.action_id,
+           ar.action_name,
+           da.assigned_to_user_id,
+           da.assigned_to_role,
+           da.assigned_to_department_id,
+           da.status,
+           da.priority,
+           da.due_date,
+           da.completed_at,
+           da.created_at,
+           da.updated_at
+    FROM document_actions da
+    LEFT JOIN dms_documents d ON d.doc_id = da.doc_id
+    LEFT JOIN action_required ar ON ar.action_id = da.action_id
 """
-
-data = fetch_many(engine_uri, {"departments": dept_q, "users": users_q, "docs": docs_q, "ann": ann_q})
-departments = data["departments"]
+data = fetch_many(engine_uri, {"docs": docs_q, "reqs": requests_q})
 
 # Global chart style
 PALETTE = [
@@ -145,113 +148,8 @@ PALETTE = [
 ]
 px.defaults.template = "plotly_dark"
 
-# Minimal layout: tabs per section
-users_tab, docs_tab, ann_tab = st.tabs(["Users", "Documents", "Announcements"])
-
-# -----------------------------
-# Users
-# -----------------------------
-with users_tab:
-    st.caption("Users")
-    users_df = data["users"].copy()
-    if not users_df.empty:
-        users_df = users_df.merge(departments, how="left", on="department_id")
-        users_df.rename(columns={"department_name": "Department", "role": "Role", "status": "Status"}, inplace=True)
-        users_df = to_dt(users_df, ["created_at", "updated_at"]) 
-
-        # KPI cards
-        u_k1, u_k2, u_k3 = st.columns(3)
-        with u_k1:
-            st.metric("Total Users", f"{len(users_df):,}")
-        with u_k2:
-            st.metric("Active Users", f"{(users_df['Status'] == 'active').sum():,}")
-        with u_k3:
-            st.metric("Verified Users", f"{(users_df['is_verified'] == 'yes').sum():,}")
-
-        ucol_f, ucol_s = st.columns(2)
-        with ucol_f:
-            with st.expander("Filters", expanded=False):
-                roles = sorted([r for r in users_df["Role"].dropna().unique()])
-                role_sel = st.multiselect("Role", roles, default=roles, key="user_role")
-                statuses = sorted([s for s in users_df["Status"].dropna().unique()])
-                status_sel = st.multiselect("Status", statuses, default=statuses, key="user_status")
-                depts = sorted([d for d in users_df["Department"].dropna().unique()])
-                dept_sel = st.multiselect("Department", depts, default=depts, key="user_dept")
-                # Date range
-                if "created_at" in users_df.columns and not users_df["created_at"].isna().all():
-                    min_dt = pd.to_datetime(users_df["created_at"].min()).date()
-                    max_dt = pd.to_datetime(users_df["created_at"].max()).date()
-                    start, end = st.date_input("Created between", value=(min_dt, max_dt), key="user_created_between")
-                else:
-                    start, end = None, None
-
-        f_users = users_df.copy()
-        if role_sel:
-            f_users = f_users[f_users["Role"].isin(role_sel)]
-        if status_sel:
-            f_users = f_users[f_users["Status"].isin(status_sel)]
-        if dept_sel:
-            f_users = f_users[f_users["Department"].isin(dept_sel)]
-        if start and end and "created_at" in f_users.columns:
-            f_users = f_users[(f_users["created_at"].dt.date >= start) & (f_users["created_at"].dt.date <= end)]
-        # Default sort and table
-        f_users = apply_sort(f_users, "user_id", True)
-        st.dataframe(f_users, use_container_width=True, hide_index=True)
-
-        # CSV export for Users
-        csv_u = f_users.to_csv(index=False).encode('utf-8')
-        st.download_button("Download Users (CSV)", data=csv_u, file_name="users_filtered.csv", mime="text/csv")
-
-        # Chart toggles
-        with st.expander("Chart toggles", expanded=False):
-            show_u_role = st.checkbox("Users by Role", value=True, key="u_role")
-            u_role_type = st.selectbox("Users by Role chart type", ["Pie", "Bar"], index=0, key="u_role_type")
-            show_u_dept = st.checkbox("Users by Department", value=True, key="u_dept")
-            u_dept_type = st.selectbox("Users by Department chart type", ["Bar", "Pie"], index=0, key="u_dept_type")
-            # Users over time
-            show_u_time = st.checkbox("Users over Time (created_at)", value=True, key="u_time")
-            u_gran_map = {"Day": "D", "Week": "W", "Month": "M"}
-            u_gran = st.selectbox("Users time granularity", list(u_gran_map.keys()), index=0, key="u_time_gran")
-            u_time_type = st.selectbox("Users time chart type", ["Line", "Bar"], index=0, key="u_time_type")
-
-        c1, c2 = st.columns(2)
-        with c1:
-            if show_u_role:
-                st.caption("Users by Role")
-                role_counts = f_users["Role"].value_counts().reset_index()
-                role_counts.columns = ["Role", "Count"]
-                if u_role_type == "Pie":
-                    fig = px.pie(role_counts, names="Role", values="Count", hole=0.3, color_discrete_sequence=PALETTE)
-                else:
-                    fig = px.bar(role_counts, x="Role", y="Count", color_discrete_sequence=PALETTE)
-                st.plotly_chart(fig, use_container_width=True)
-        with c2:
-            if show_u_dept:
-                st.caption("Users by Department")
-                dept_counts = f_users["Department"].value_counts().reset_index()
-                dept_counts.columns = ["Department", "Count"]
-                if u_dept_type == "Bar":
-                    fig = px.bar(dept_counts, x="Department", y="Count", color_discrete_sequence=PALETTE)
-                else:
-                    fig = px.pie(dept_counts, names="Department", values="Count", hole=0.3, color_discrete_sequence=PALETTE)
-                st.plotly_chart(fig, use_container_width=True)
-
-        # Users over time
-        if show_u_time and "created_at" in f_users.columns and not f_users.empty:
-            ts_u = (
-                f_users.dropna(subset=["created_at"]) 
-                       .groupby(f_users["created_at"].dt.to_period(u_gran_map[u_gran])).size()
-                       .reset_index(name="Count")
-            )
-            ts_u["date"] = ts_u["created_at"].dt.to_timestamp()
-            st.caption("Users over Time (created_at)")
-            if u_time_type == "Line":
-                st.plotly_chart(px.line(ts_u, x="date", y="Count"), use_container_width=True)
-            else:
-                st.plotly_chart(px.bar(ts_u, x="date", y="Count", color_discrete_sequence=PALETTE), use_container_width=True)
-    else:
-        st.info("No users found or failed to load users.")
-
+# Minimal layout: two tabs for Documents and Requests
+docs_tab, req_tab = st.tabs(["Documents", "Requests"])
 
 # -----------------------------
 # Documents
@@ -277,8 +175,8 @@ with docs_tab:
                 exclude_deleted = st.checkbox("Exclude deleted", value=True, key="doc_exclude_deleted")
                 statuses = sorted([s for s in docs_df["status"].dropna().unique()])
                 status_sel = st.multiselect("Status", statuses, default=statuses, key="doc_status")
-                vis_vals = sorted([v for v in docs_df["visibility"].dropna().unique()])
-                vis_sel = st.multiselect("Visibility", vis_vals, default=vis_vals, key="doc_visibility")
+                vis_all_options = ["ALL", "DEPARTMENT", "SPECIFIC_USERS", "SPECIFIC_ROLES", "ROLE_DEPARTMENT"]
+                vis_sel = st.multiselect("Visibility", vis_all_options, default=vis_all_options, key="doc_visibility")
                 copy_vals = sorted([v for v in docs_df["available_copy"].dropna().unique()])
                 copy_sel = st.multiselect("Available Copy", copy_vals, default=copy_vals, key="doc_copy")
                 # Doc Type filter
@@ -409,7 +307,8 @@ with docs_tab:
         # Documents by Visibility pie
         if show_d_visibility and "visibility" in f_docs.columns and not f_docs.empty:
             st.caption("Documents by Visibility")
-            v_counts = f_docs["visibility"].fillna("(None)").value_counts().reset_index()
+            vis_all_options = ["ALL", "DEPARTMENT", "SPECIFIC_USERS", "SPECIFIC_ROLES", "ROLE_DEPARTMENT"]
+            v_counts = f_docs["visibility"].value_counts().reindex(vis_all_options, fill_value=0).reset_index()
             v_counts.columns = ["visibility", "Count"]
             if d_visibility_type == "Pie":
                 fig = px.pie(v_counts, names="visibility", values="Count", hole=0.3, color_discrete_sequence=PALETTE)
@@ -421,98 +320,68 @@ with docs_tab:
 
 
 # -----------------------------
-# Announcements
+# Requests
 # -----------------------------
-with ann_tab:
-    st.caption("Announcements")
-    ann_df = data["ann"].copy()
-    if not ann_df.empty:
-        ann_df = to_dt(ann_df, ["publish_at", "expire_at", "created_at", "updated_at"]) 
-        if "visible_to_all" in ann_df.columns:
-            ann_df["visible_to_all"] = ann_df["visible_to_all"].map({1: True, 0: False}).fillna(ann_df["visible_to_all"])
+with req_tab:
+    st.caption("Document Requests")
+    reqs_df = data["reqs"].copy()
+    if not reqs_df.empty:
+        reqs_df = to_dt(reqs_df, ["due_date", "completed_at", "created_at", "updated_at"]) 
 
         # KPI cards
-        a_k1, a_k2, a_k3 = st.columns(3)
-        with a_k1:
-            st.metric("Total Announcements", f"{len(ann_df):,}")
-        with a_k2:
-            st.metric("Published (status)", f"{(ann_df['status'] == 'published').sum():,}")
-        with a_k3:
-            st.metric("Visible to All", f"{(ann_df.get('visible_to_all') == True).sum():,}")
+        r_k1, r_k2, r_k3 = st.columns(3)
+        with r_k1:
+            st.metric("Total Requests", f"{len(reqs_df):,}")
+        with r_k2:
+            st.metric("Pending", f"{(reqs_df['status'] == 'pending').sum():,}")
+        with r_k3:
+            st.metric("Completed", f"{(reqs_df['status'] == 'completed').sum():,}")
 
-        acol_f, acol_s = st.columns(2)
-        with acol_f:
+        rcol_f, rcol_s = st.columns(2)
+        with rcol_f:
             with st.expander("Filters", expanded=False):
-                creators = sorted([c for c in ann_df["created_by_name"].dropna().unique()]) if "created_by_name" in ann_df.columns else []
-                creator_sel = st.multiselect("Created by", creators, default=creators, key="ann_creator")
-                visible_sel = st.multiselect("Visible to All", [True, False], default=[True, False], key="ann_visible")
-                if "publish_at" in ann_df.columns and not ann_df["publish_at"].isna().all():
-                    amin = pd.to_datetime(ann_df["publish_at"].min()).date()
-                    amax = pd.to_datetime(ann_df["publish_at"].max()).date()
-                    astart, aend = st.date_input("Publish date between", value=(amin, amax), key="ann_date_between")
+                r_statuses = ["pending", "in_progress", "completed", "cancelled"]
+                r_status_sel = st.multiselect("Status", r_statuses, default=r_statuses, key="req_status")
+                r_priorities = ["low", "medium", "high", "urgent"]
+                r_priority_sel = st.multiselect("Priority", r_priorities, default=r_priorities, key="req_priority")
+                r_roles = ["ADMIN", "DEAN", "FACULTY"]
+                r_role_sel = st.multiselect("Assigned to Role", r_roles, default=r_roles, key="req_role")
+                if "due_date" in reqs_df.columns and not reqs_df["due_date"].isna().all():
+                    rmin = pd.to_datetime(reqs_df["due_date"].min()).date()
+                    rmax = pd.to_datetime(reqs_df["due_date"].max()).date()
+                    rstart, rend = st.date_input("Due date between", value=(rmin, rmax), key="req_due_between")
                 else:
-                    astart, aend = None, None
+                    rstart, rend = None, None
 
-        f_ann = ann_df.copy()
-        if creator_sel and "created_by_name" in f_ann.columns:
-            f_ann = f_ann[f_ann["created_by_name"].isin(creator_sel)]
-        if visible_sel and "visible_to_all" in f_ann.columns:
-            f_ann = f_ann[f_ann["visible_to_all"].isin(visible_sel)]
-        if astart and aend and "publish_at" in f_ann.columns:
-            f_ann = f_ann[(f_ann["publish_at"].dt.date >= astart) & (f_ann["publish_at"].dt.date <= aend)]
+        f_reqs = reqs_df.copy()
+        if r_status_sel:
+            f_reqs = f_reqs[f_reqs["status"].isin(r_status_sel)]
+        if r_priority_sel:
+            f_reqs = f_reqs[f_reqs["priority"].isin(r_priority_sel)]
+        if r_role_sel:
+            f_reqs = f_reqs[f_reqs["assigned_to_role"].isin(r_role_sel)]
+        if rstart and rend and "due_date" in f_reqs.columns:
+            f_reqs = f_reqs[(f_reqs["due_date"].dt.date >= rstart) & (f_reqs["due_date"].dt.date <= rend)]
 
-        # Default sort (no UI)
-        sort_col_a = "announcement_id"
-        asc_a = True
-        f_ann = apply_sort(f_ann, sort_col_a, asc_a)
-        st.dataframe(f_ann, use_container_width=True, hide_index=True)
-
-        # CSV export
-        csv_a = f_ann.to_csv(index=False).encode('utf-8')
-        st.download_button("Download Announcements (CSV)", data=csv_a, file_name="announcements_filtered.csv", mime="text/csv")
-
-        with st.expander("Chart toggles", expanded=False):
-            show_a_creator = st.checkbox("Announcements by Creator", value=True, key="a_creator")
-            a_creator_type = st.selectbox("Announcements by Creator chart type", ["Pie", "Bar"], index=0, key="a_creator_type")
-            show_a_time = st.checkbox("Announcements Published Over Time", value=True, key="a_time")
-            a_time_type = st.selectbox("Announcements time chart type", ["Line", "Bar"], index=0, key="a_time_type")
-            granularity_map_a = {"Day": "D", "Week": "W", "Month": "M"}
-            granularity_a = st.selectbox("Time granularity", list(granularity_map_a.keys()), index=0, key="ann_granularity")
-
-        c5, c6 = st.columns(2)
-        with c5:
-            if show_a_creator:
-                st.caption("Announcements by Creator")
-                if "created_by_name" in f_ann.columns and not f_ann.empty:
-                    a_counts = f_ann["created_by_name"].value_counts().reset_index()
-                    a_counts.columns = ["created_by_name", "Count"]
-                    if a_creator_type == "Pie":
-                        fig = px.pie(a_counts, names="created_by_name", values="Count", hole=0.3, color_discrete_sequence=PALETTE)
-                    else:
-                        fig = px.bar(a_counts, x="created_by_name", y="Count", color_discrete_sequence=PALETTE)
-                    st.plotly_chart(fig, use_container_width=True)
-                else:
-                    st.info("No creator data to plot.")
-        with c6:
-            if show_a_time:
-                st.caption("Announcements Published Over Time")
-                if "publish_at" in f_ann.columns and not f_ann.empty:
-                    period_a = granularity_map_a[granularity_a]
-                    ts = (
-                        f_ann.dropna(subset=["publish_at"]) 
-                             .groupby(f_ann["publish_at"].dt.to_period(period_a)).size()
-                             .reset_index(name="Count")
-                    )
-                    ts["date"] = ts["publish_at"].dt.to_timestamp()
-                    if a_time_type == "Line":
-                        fig = px.line(ts, x="date", y="Count")
-                    else:
-                        fig = px.bar(ts, x="date", y="Count", color_discrete_sequence=PALETTE)
-                    st.plotly_chart(fig, use_container_width=True)
-                else:
-                    st.info("No publish_at values to plot.")
+        # Default sort and table
+        f_reqs = apply_sort(f_reqs, "document_action_id", True)
+        display_cols_r = [
+            c for c in [
+                "document_action_id",
+                "doc_id",
+                "document_title",
+                "action_name",
+                "assigned_to_role",
+                "assigned_to_department_id",
+                "status",
+                "priority",
+                "due_date",
+                "created_at",
+                "updated_at",
+            ] if c in f_reqs.columns
+        ]
+        st.dataframe(f_reqs[display_cols_r], use_container_width=True, hide_index=True)
     else:
-        st.info("No announcements found or failed to load announcements.")
-
-
+        st.info("No document requests found or failed to load requests.")
+ 
 

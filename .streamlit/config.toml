@@ -1,0 +1,14 @@
+[server]
+# Allow embedding and disable protections that block cross-origin iframes when self-hosted
+headless = true
+enableCORS = false
+enableXsrfProtection = false
+address = "0.0.0.0"
+port = 8501
+
+[browser]
+# Optional: reduce telemetry and help local dev
+gatherUsageStats = false
+
+[theme]
+base = "light"
