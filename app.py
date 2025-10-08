@@ -118,7 +118,7 @@ with st.sidebar:
     
     page = st.radio(
         "Navigation",
-        ["📈 Dashboard", "📄 Documents Analytics", "📋 Requests Analytics"],
+        ["📈 Dashboard", "📄 Documents Analytics"],
         label_visibility="collapsed"
     )
     
@@ -134,12 +134,6 @@ with st.sidebar:
         index=0,
         label_visibility="collapsed"
     )
-    
-    st.markdown("---")
-    st.markdown("### ⚙️ Settings")
-    if st.button("🔄 Refresh Data", use_container_width=True):
-        st.cache_data.clear()
-        st.rerun()
     
     st.markdown("---")
     st.caption(f"Last updated: {datetime.now().strftime('%b %d, %Y %H:%M')}")
@@ -448,103 +442,5 @@ elif page == "📄 Documents Analytics":
             st.plotly_chart(fig, use_container_width=True)
     else:
         st.info("No documents found or failed to load documents.")
-
-
-elif page == "📋 Requests Analytics":
-    # Header
-    year_display = selected_year if selected_year != "All Years" else "All Time"
-    st.markdown(f"### 📋 Requests Analytics - {year_display}")
-    st.markdown("*Visual insights into request workflow: completion rates, priority distribution, and workload analysis.*")
-    
-    reqs_df = reqs_df_full.copy()
-    if not reqs_df.empty: 
-
-        # Calculate insights
-        total_reqs = len(reqs_df)
-        pending_reqs = (reqs_df['status'] == 'pending').sum()
-        completed_reqs = (reqs_df['status'] == 'completed').sum()
-        in_progress_reqs = (reqs_df['status'] == 'in_progress').sum()
-        completion_rate = (completed_reqs / total_reqs * 100) if total_reqs > 0 else 0
-        
-        # KPI cards with storytelling
-        r_k1, r_k2, r_k3, r_k4 = st.columns(4)
-        with r_k1:
-            st.metric("Total Requests", f"{total_reqs:,}")
-            st.caption("📊 All document action items")
-        with r_k2:
-            st.metric("Pending", f"{pending_reqs:,}")
-            st.caption("⏳ Awaiting action")
-        with r_k3:
-            st.metric("In Progress", f"{in_progress_reqs:,}")
-            st.caption("🔄 Currently being worked on")
-        with r_k4:
-            st.metric("Completed", f"{completed_reqs:,}", delta=f"{completion_rate:.1f}% done")
-            st.caption("✅ Successfully finished")
-        
-        # Performance insight
-        if completion_rate >= 70:
-            st.success(f"🎯 **Excellent Performance**: {completion_rate:.1f}% completion rate shows strong workflow efficiency!")
-        elif completion_rate >= 50:
-            st.info(f"📊 **Good Progress**: {completion_rate:.1f}% completed. Keep the momentum going!")
-        elif completion_rate >= 30:
-            st.warning(f"⚠️ **Needs Attention**: Only {completion_rate:.1f}% completed. Consider reviewing pending requests.")
-        else:
-            st.error(f"🚨 **Action Required**: {completion_rate:.1f}% completion rate is low. Immediate attention needed for pending items.")
-        
-        st.markdown("---")
-        
-        # Charts only - no tables or filters
-        f_reqs = reqs_df.copy()
-        
-        # Row 1: Status & Priority
-        r1, r2 = st.columns(2)
-        with r1:
-            st.markdown("**📊 Request Status Distribution**")
-            status_counts = f_reqs["status"].value_counts().reset_index()
-            status_counts.columns = ["Status", "Count"]
-            fig = px.pie(status_counts, names="Status", values="Count", hole=0.4, color_discrete_sequence=PALETTE)
-            fig.update_layout(height=350, margin=dict(l=0, r=0, t=30, b=0))
-            st.plotly_chart(fig, use_container_width=True)
-        
-        with r2:
-            if "priority" in f_reqs.columns:
-                st.markdown("**⚡ Priority Distribution**")
-                priority_counts = f_reqs["priority"].value_counts().reset_index()
-                priority_counts.columns = ["Priority", "Count"]
-                urgent_count = priority_counts[priority_counts["Priority"] == "urgent"]["Count"].sum() if "urgent" in priority_counts["Priority"].values else 0
-                st.caption(f"🚨 **{urgent_count}** urgent requests")
-                fig = px.bar(priority_counts, x="Priority", y="Count", color_discrete_sequence=PALETTE)
-                fig.update_layout(height=350, margin=dict(l=0, r=0, t=30, b=0))
-                st.plotly_chart(fig, use_container_width=True)
-        
-        # Row 2: Role & Timeline
-        st.markdown("---")
-        r3, r4 = st.columns(2)
-        
-        with r3:
-            if "assigned_to_role" in f_reqs.columns:
-                st.markdown("**👥 Workload by Role**")
-                role_counts = f_reqs["assigned_to_role"].value_counts().reset_index()
-                role_counts.columns = ["Role", "Count"]
-                busiest_role = role_counts.iloc[0]["Role"] if not role_counts.empty else "N/A"
-                busiest_count = role_counts.iloc[0]["Count"] if not role_counts.empty else 0
-                st.caption(f"Most assigned: **{busiest_role}** ({busiest_count} requests)")
-                fig = px.bar(role_counts, x="Count", y="Role", orientation="h", color_discrete_sequence=PALETTE)
-                fig.update_layout(height=350, margin=dict(l=0, r=0, t=30, b=0), yaxis={'categoryorder':'total ascending'})
-                st.plotly_chart(fig, use_container_width=True)
-        
-        with r4:
-            if "created_at" in f_reqs.columns and not f_reqs.empty:
-                st.markdown("**📈 Requests Over Time**")
-                ts_data = f_reqs.dropna(subset=["created_at"]).copy()
-                ts_data["month"] = pd.to_datetime(ts_data["created_at"]).dt.to_period("M").dt.to_timestamp()
-                ts = ts_data.groupby("month").size().reset_index(name="Requests")
-                fig = px.line(ts, x="month", y="Requests", markers=True)
-                fig.update_layout(height=350, margin=dict(l=0, r=0, t=30, b=0))
-                st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.info("No timeline data available")
-    else:
-        st.info("No document requests found or failed to load requests.")
  
 
