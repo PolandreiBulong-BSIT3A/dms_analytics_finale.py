@@ -81,6 +81,7 @@ st.set_page_config(page_title="ISPSC Tagudin DMS Analytics", page_icon="📊", l
 st.markdown(
     """
     <style>
+      @import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;600;700&display=swap');
       :root {
         --primary: #4F46E5; /* indigo-600 */
         --bg: #F7F8FA;
@@ -91,12 +92,21 @@ st.markdown(
       }
       .stApp {
         background: var(--bg);
+        font-family: 'Source Sans 3', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
       }
       .block-container {
         padding-top: 1.2rem;
         padding-bottom: 3rem;
         max-width: 1300px;
       }
+      /* Sidebar */
+      section[data-testid="stSidebar"] {
+        background: #ffffff;
+        border-right: 1px solid #EEF0F4;
+      }
+      .sidebar-title { font-weight: 700; font-size: 1.1rem; margin-bottom: .25rem; }
+      .sidebar-muted { color: var(--muted); font-size: .9rem; margin-bottom: .75rem; }
+      .sidebar-card { background:#fff; border:1px solid #EEF0F4; border-radius:12px; padding:.75rem; }
       /* Header */
       .app-header {
         background: var(--panel);
@@ -127,6 +137,26 @@ st.markdown(
         background: var(--panel);
         border: 1px solid #EEF0F4;
       }
+      .card { background: var(--panel); border:1px solid #EEF0F4; border-radius: var(--radius); box-shadow: var(--shadow); }
+      .card-body { padding: 1rem 1.1rem; }
+      .info-card { background:#F1F5FF; border:1px solid #DDE3FF; color:#1F2A6B; border-radius:12px; padding:.85rem 1rem; }
+      .info-card .emoji { margin-right:.5rem; }
+      /* Chart container with rounded edges */
+      .chart-card { padding:.5rem; }
+      .chart-card .js-plotly-plot, .chart-card canvas { border-radius: 16px !important; }
+      /* Button variants */
+      .btn-row { display:flex; gap:.5rem; flex-wrap:wrap; }
+      .btn { border-radius: 10px; padding:.45rem .9rem; font-weight:600; border:1px solid transparent; cursor:pointer; transition:.15s ease all; }
+      .btn-primary { background: var(--primary); color:#fff; border-color: var(--primary); }
+      .btn-primary:hover { filter: brightness(0.95); }
+      .btn-outline { background:#fff; color: var(--primary); border-color: var(--primary); }
+      .btn-outline:hover { background:#EEF2FF; }
+      .btn-neutral { background:#F8FAFC; color:#111827; border-color:#E5E7EB; }
+      .btn-neutral:hover { background:#EFF4F8; }
+      /* Code snippet with copy */
+      .code-block { position:relative; }
+      .copy-btn { position:absolute; right:.5rem; top:.5rem; border:1px solid #E5E7EB; background:#fff; border-radius:8px; padding:.25rem .5rem; font-size:.85rem; cursor:pointer; }
+      .copy-btn:hover { background:#F3F4F6; }
       /* Buttons */
       .stButton>button {
         border-radius: 10px;
@@ -137,6 +167,7 @@ st.markdown(
       .stButton>button[kind="primary"] {
         background: var(--primary);
         border-color: var(--primary);
+        color: #fff;
       }
     </style>
     """,
@@ -226,13 +257,86 @@ PALETTE = [
 ]
 px.defaults.template = "plotly_white"
 
-# Minimal layout: two tabs for Documents and Requests
-docs_tab, req_tab = st.tabs(["Documents", "Requests"])
+# Sidebar navigation similar to a design system menu
+st.sidebar.markdown("<div class='sidebar-title'>🔖 Overview</div>", unsafe_allow_html=True)
+st.sidebar.markdown(
+    """
+    <div class='sidebar-card'>
+      <div>• Hello World</div>
+      <div>• North Star</div>
+      <div class='sidebar-title' style='margin-top:.6rem;'>📊 Metrics</div>
+      <div class='sidebar-muted'>Core Metrics, Dependencies, Statuses over time…</div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+nav = st.sidebar.radio(
+    "Navigation",
+    ["Overview", "Documents", "Requests"],
+    index=0,
+    label_visibility="collapsed",
+    key="nav"
+)
 
 # -----------------------------
 # Documents
 # -----------------------------
-with docs_tab:
+if nav == "Overview":
+    st.caption("Overview")
+    docs_df = data["docs"].copy()
+    reqs_df = data["reqs"].copy()
+    total_docs = len(docs_df)
+    total_reqs = len(reqs_df)
+    completed = (reqs_df.get("status", pd.Series(dtype=str)) == "completed").sum() if not reqs_df.empty else 0
+    pending = (reqs_df.get("status", pd.Series(dtype=str)) == "pending").sum() if not reqs_df.empty else 0
+
+    k1,k2,k3,k4 = st.columns(4)
+    with k1: st.metric("Total Documents", f"{total_docs:,}")
+    with k2: st.metric("Total Requests", f"{total_reqs:,}")
+    with k3: st.metric("Pending Requests", f"{pending:,}")
+    with k4: st.metric("Completed Requests", f"{completed:,}")
+
+    # Info message card
+    st.markdown(
+        """
+        <div class="info-card">🔔 <strong>Info:</strong> Use the sidebar to navigate between Overview, Documents, and Requests. Filters are available per page, and you can reset or select all with one click.</div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # Area chart like the design sample
+    st.caption("Documents over Time")
+    if not docs_df.empty and "date_received" in docs_df.columns:
+        tmp = docs_df.dropna(subset=["date_received"]).copy()
+        tmp["date"] = pd.to_datetime(tmp["date_received"]).dt.to_period("M").dt.to_timestamp()
+        ts = tmp.groupby("date").size().reset_index(name="Count")
+        fig = px.area(ts, x="date", y="Count", markers=True, color_discrete_sequence=["#EF4444"])  # red accent
+        st.markdown('<div class="card chart-card">', unsafe_allow_html=True)
+        st.plotly_chart(fig, use_container_width=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+    else:
+        st.info("No date data available for overview chart.")
+
+    # Button variants row
+    st.markdown(
+        """
+        <div class="btn-row">
+          <button class="btn btn-primary">Primary</button>
+          <button class="btn btn-outline">Outline</button>
+          <button class="btn btn-neutral">Neutral</button>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # Code snippet with copy button
+    code_sample = "import streamlit as st\n\nst.title('Hello, Streamlit!')\nst.write('This is a sample snippet.')"
+    st.markdown('<div class="card code-block"><button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById(\'code-sample\').innerText);">Copy</button>', unsafe_allow_html=True)
+    st.code(code_sample, language="python", line_numbers=False)
+    st.markdown('<div id="code-sample" style="display:none;">'+code_sample.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;")+'</div></div>', unsafe_allow_html=True)
+
+elif nav == "Documents":
     st.caption("Documents")
     docs_df = data["docs"].copy()
     if not docs_df.empty:
@@ -442,7 +546,7 @@ with docs_tab:
 # -----------------------------
 # Requests
 # -----------------------------
-with req_tab:
+elif nav == "Requests":
     st.caption("Document Requests")
     reqs_df = data["reqs"].copy()
     if not reqs_df.empty:
