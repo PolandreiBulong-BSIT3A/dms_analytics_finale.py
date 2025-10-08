@@ -68,17 +68,88 @@ def apply_sort(df: pd.DataFrame, sort_col: Optional[str], ascending: bool) -> pd
 # ---------------
 # App UI
 # ---------------
-st.set_page_config(page_title="ISPSC Tagudin DMS Analytics", layout="wide")
-st.title("ISPSC Tagudin DMS Analytics Dashboard")
-st.caption("Documents Analytics")
+st.set_page_config(page_title="ISPSC Tagudin DMS Analytics", page_icon="📊", layout="wide")
 
-# Refresh control
-hdr1, hdr2 = st.columns([0.2, 1])
-with hdr1:
-    if st.button("Refresh Data", type="primary", use_container_width=True):
-        st.cache_data.clear()
-        st.rerun()
-st.caption(f"Last refreshed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+# Global styles (modern light theme)
+st.markdown(
+    """
+    <style>
+      :root {
+        --primary: #4F46E5; /* indigo-600 */
+        --bg: #F7F8FA;
+        --panel: #FFFFFF;
+        --muted: #6B7280;
+        --shadow: 0 8px 20px rgba(0,0,0,0.06);
+        --radius: 14px;
+      }
+      .stApp {
+        background: var(--bg);
+      }
+      .block-container {
+        padding-top: 1.2rem;
+        padding-bottom: 3rem;
+        max-width: 1300px;
+      }
+      /* Header */
+      .app-header {
+        background: var(--panel);
+        border: 1px solid #EEF0F4;
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        padding: 1.1rem 1.2rem;
+        margin-bottom: 1rem;
+      }
+      .app-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin: 0;
+      }
+      .app-subtitle {
+        color: var(--muted);
+        margin-top: .25rem;
+      }
+      /* Tabs */
+      [data-baseweb="tab-list"]{ gap: .25rem; }
+      [data-baseweb="tab"]{ background: transparent; border-radius: 10px; }
+      [data-baseweb="tab"]:hover{ background: #F1F5F9; }
+      /* Cards/expanders */
+      .stExpander, .stDataFrame, .element-container:has(.metric-container) {
+        border-radius: var(--radius) !important;
+        box-shadow: var(--shadow);
+        overflow: hidden;
+        background: var(--panel);
+        border: 1px solid #EEF0F4;
+      }
+      /* Buttons */
+      .stButton>button {
+        border-radius: 10px;
+        border: 1px solid #E5E7EB;
+        padding: .6rem .9rem;
+        font-weight: 600;
+      }
+      .stButton>button[kind="primary"] {
+        background: var(--primary);
+        border-color: var(--primary);
+      }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+# Header with right-aligned refresh
+header = st.container()
+with header:
+    st.markdown('<div class="app-header">', unsafe_allow_html=True)
+    hcol1, hsp, hcol2 = st.columns([0.8, 0.05, 0.15])
+    with hcol1:
+        st.markdown('<div class="app-title">ISPSC Tagudin DMS Analytics</div>', unsafe_allow_html=True)
+        st.markdown('<div class="app-subtitle">Modern documents analytics dashboard</div>', unsafe_allow_html=True)
+    with hcol2:
+        if st.button("Refresh Data", type="primary", use_container_width=True):
+            st.cache_data.clear()
+            st.rerun()
+        st.caption(f"Last refreshed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # Build DB connection from environment variables (no sidebar controls)
 # Defaults set to provided remote SQL details; prefer st.secrets at runtime
@@ -143,10 +214,10 @@ data = fetch_many(engine_uri, {"docs": docs_q, "reqs": requests_q})
 
 # Global chart style
 PALETTE = [
-    "#636EFA", "#EF553B", "#00CC96", "#AB63FA", "#FFA15A",
-    "#19D3F3", "#FF6692", "#B6E880", "#FF97FF", "#FECB52"
+    "#4F46E5", "#F59E0B", "#10B981", "#EC4899", "#0EA5E9",
+    "#22D3EE", "#A78BFA", "#84CC16", "#F97316", "#14B8A6"
 ]
-px.defaults.template = "plotly_dark"
+px.defaults.template = "plotly_white"
 
 # Minimal layout: two tabs for Documents and Requests
 docs_tab, req_tab = st.tabs(["Documents", "Requests"])
