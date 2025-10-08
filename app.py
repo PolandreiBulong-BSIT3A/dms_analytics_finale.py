@@ -136,6 +136,18 @@ with st.sidebar:
     )
     
     st.markdown("---")
+    st.markdown("### 🏢 Department Filter")
+    
+    # Department filter options
+    department_options = ["All Departments", "CAS", "CMBE", "CTE", "LHS", "Graduate School", "Others"]
+    selected_department = st.selectbox(
+        "Select Department",
+        options=department_options,
+        index=0,
+        label_visibility="collapsed"
+    )
+    
+    st.markdown("---")
     st.caption(f"Last updated: {datetime.now().strftime('%b %d, %Y %H:%M')}")
 
 # Build DB connection from environment variables (no sidebar controls)
@@ -231,6 +243,22 @@ if selected_year != "All Years":
             reqs_df_full["created_at"].dt.year == selected_year
         ]
 
+# Filter by department
+if selected_department != "All Departments":
+    if not docs_df_full.empty and "department_codes" in docs_df_full.columns:
+        if selected_department == "Others":
+            # Filter for user-specific documents (SPECIFIC_USERS, ROLE_DEPARTMENT, etc.)
+            docs_df_full = docs_df_full[
+                (docs_df_full["visibility"].isin(["SPECIFIC_USERS", "SPECIFIC_ROLES", "ROLE_DEPARTMENT"])) |
+                (docs_df_full["department_codes"].isna())
+            ]
+        else:
+            # Filter for specific department code
+            docs_df_full = docs_df_full[
+                (docs_df_full["department_codes"].notna()) &
+                (docs_df_full["department_codes"].str.contains(selected_department, na=False))
+            ]
+
 # Page routing based on sidebar selection
 if page == "📈 Dashboard":
     # Dashboard Overview Page
@@ -239,7 +267,8 @@ if page == "📈 Dashboard":
     with col_h1:
         st.markdown('<div class="dashboard-title">Document Management Analytics</div>', unsafe_allow_html=True)
         year_display = selected_year if selected_year != "All Years" else "All Time"
-        st.markdown(f'<div class="dashboard-subtitle">{year_display} Overview</div>', unsafe_allow_html=True)
+        dept_display = selected_department if selected_department != "All Departments" else "All Departments"
+        st.markdown(f'<div class="dashboard-subtitle">{year_display} - {dept_display}</div>', unsafe_allow_html=True)
     with col_h2:
         st.markdown(f"<div style='text-align: right; color: #6B7280; font-size: 0.9rem;'>Total Documents<br/><span style='font-size: 1.5rem; font-weight: 600; color: #111827;'>{len(docs_df_full):,}</span></div>", unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
@@ -252,19 +281,19 @@ if page == "📈 Dashboard":
     
     total_docs = len(docs_df)
     active_docs = (docs_df['status'] == 'active').sum() if not docs_df.empty else 0
-    inactive_docs = total_docs - active_docs
-    deleted_docs = (docs_df.get('deleted', 0) == 1).sum() if not docs_df.empty else 0
+    deleted_docs = (docs_df['status'] == 'deleted').sum() if not docs_df.empty else 0
     folder_count = docs_df["folder_name"].nunique() if not docs_df.empty and "folder_name" in docs_df.columns else 0
     doc_type_count = docs_df["doc_type_name"].nunique() if not docs_df.empty and "doc_type_name" in docs_df.columns else 0
+    active_pct = (active_docs / total_docs * 100) if total_docs > 0 else 0
     
     with m1:
         st.metric("Total Documents", f"{total_docs:,}", help="All documents in the system")
     with m2:
         st.metric("Active Docs", f"{active_docs:,}", help="Currently active documents")
     with m3:
-        st.metric("Inactive Docs", f"{inactive_docs:,}", help="Inactive documents")
-    with m4:
         st.metric("Deleted Docs", f"{deleted_docs:,}", help="Deleted documents")
+    with m4:
+        st.metric("Active Rate", f"{active_pct:.1f}%", help="Percentage of active documents")
     with m5:
         st.metric("Folders", f"{folder_count:,}", help="Number of folders")
     with m6:
@@ -337,7 +366,8 @@ if page == "📈 Dashboard":
 elif page == "📄 Documents Analytics":
     # Header
     year_display = selected_year if selected_year != "All Years" else "All Time"
-    st.markdown(f"### 📄 Document Analytics - {year_display}")
+    dept_display = selected_department if selected_department != "All Departments" else "All Departments"
+    st.markdown(f"### 📄 Document Analytics - {year_display} - {dept_display}")
     st.markdown("*Visual insights into your document ecosystem: status trends, distribution patterns, and intake analysis.*")
     
     docs_df = docs_df_full.copy()
@@ -365,7 +395,7 @@ elif page == "📄 Documents Analytics":
         if active_pct > 80:
             st.success(f"💡 **Healthy System**: {active_pct:.1f}% of your documents are active, indicating good document lifecycle management.")
         elif active_pct > 50:
-            st.info(f"📌 **Moderate Activity**: {active_pct:.1f}% active documents. Consider reviewing inactive documents for archival.")
+            st.info(f"📌 **Moderate Activity**: {active_pct:.1f}% active documents. Consider reviewing document retention policies.")
         else:
             st.warning(f"⚠️ **Low Activity**: Only {active_pct:.1f}% documents are active. Review your document retention policy.")
         

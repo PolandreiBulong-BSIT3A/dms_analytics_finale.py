@@ -165,7 +165,7 @@ CREATE TABLE `dms_documents` (
   `visible_to_all` tinyint(1) DEFAULT 1,
   `allowed_user_ids` text DEFAULT NULL,
   `allowed_roles` text DEFAULT NULL,
-  `status` enum('active','inactive','pending','deleted') DEFAULT 'active',
+  `status` enum('active','deleted') DEFAULT 'active',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `created_by_name` varchar(150) DEFAULT NULL,
@@ -191,23 +191,44 @@ INSERT INTO `dms_documents` (`doc_id`, `doc_type`, `folder_id`, `reference`, `ti
 (300, 5, 4, 'CAS-2024-001', 'CAS Faculty Meeting Minutes', NULL, NULL, 'CAS Dean', 'CAS Faculty', '2024-01-15', 'https://drive.google.com/file/d/sample1/view', 'January meeting', 'soft_copy', NULL, NULL, 1, NULL, NULL, 'active', '2024-01-15 08:00:00', '2024-01-15 08:00:00', 'ADMIN LAN', 0, NULL, NULL, NULL, NULL, NULL, NULL, 1, 'DEPARTMENT', NULL, NULL, NULL),
 (301, 5, 5, 'CMBE-2024-001', 'CMBE Budget Proposal', NULL, NULL, 'CMBE Dean', 'Finance Office', '2024-02-10', 'https://drive.google.com/file/d/sample2/view', 'Annual budget', 'both', NULL, NULL, 1, NULL, NULL, 'active', '2024-02-10 09:00:00', '2024-02-10 09:00:00', 'ADMIN LAN', 0, NULL, NULL, NULL, NULL, NULL, NULL, 1, 'DEPARTMENT', NULL, NULL, NULL),
 (302, 5, 6, 'CTE-2024-001', 'CTE Curriculum Review', NULL, NULL, 'CTE Dean', 'CTE Faculty', '2024-03-05', 'https://drive.google.com/file/d/sample3/view', 'Curriculum update', 'soft_copy', NULL, NULL, 1, NULL, NULL, 'active', '2024-03-05 10:00:00', '2024-03-05 10:00:00', 'ADMIN LAN', 0, NULL, NULL, NULL, NULL, NULL, NULL, 1, 'DEPARTMENT', NULL, NULL, NULL),
-(303, 5, 7, 'RES-2024-001', 'Research Grant Application', NULL, NULL, 'Research Office', 'All Faculty', '2024-04-12', 'https://drive.google.com/file/d/sample4/view', 'Grant opportunity', 'soft_copy', NULL, NULL, 1, NULL, NULL, 'active', '2024-04-12 11:00:00', '2024-04-12 11:00:00', 'ADMIN LAN', 0, NULL, NULL, NULL, NULL, NULL, NULL, 1, 'ALL', NULL, NULL, NULL),
-(304, 5, 8, 'ADM-2024-002', 'Administrative Order No. 5', NULL, NULL, 'Admin Office', 'All Staff', '2024-05-20', 'https://drive.google.com/file/d/sample5/view', 'New policy', 'hard_copy', NULL, NULL, 1, NULL, NULL, 'active', '2024-05-20 08:30:00', '2024-05-20 08:30:00', 'ADMIN LAN', 0, NULL, NULL, NULL, NULL, NULL, NULL, 1, 'ALL', NULL, NULL, NULL),
-(305, 1000, 10, 'TECH-2024-001', 'System Maintenance Notice', NULL, NULL, 'IT Department', 'All Users', '2024-06-15', 'https://drive.google.com/file/d/sample6/view', 'Scheduled maintenance', 'soft_copy', NULL, NULL, 1, NULL, NULL, 'active', '2024-06-15 14:00:00', '2024-06-15 14:00:00', 'THIS IS ME', 0, NULL, NULL, NULL, NULL, NULL, NULL, 1, 'ALL', NULL, NULL, NULL),
-(306, 5, 4, 'HR-2024-010', 'Leave Application Guidelines', NULL, NULL, 'HR Office', 'All Employees', '2024-07-08', 'https://drive.google.com/file/d/sample7/view', 'Updated guidelines', 'both', NULL, NULL, 1, NULL, NULL, 'active', '2024-07-08 09:15:00', '2024-07-08 09:15:00', 'ADMIN LAN', 0, NULL, NULL, NULL, NULL, NULL, NULL, 1, 'ALL', NULL, NULL, NULL),
-(307, 5, 5, 'SA-2024-005', 'Student Scholarship Program', NULL, NULL, 'Student Affairs', 'Students', '2024-08-22', 'https://drive.google.com/file/d/sample8/view', 'Scholarship info', 'soft_copy', NULL, NULL, 1, NULL, NULL, 'active', '2024-08-22 10:30:00', '2024-08-22 10:30:00', 'ADMIN LAN', 0, NULL, NULL, NULL, NULL, NULL, NULL, 1, 'ALL', NULL, NULL, NULL),
+(303, 5, 7, 'RES-2024-001', 'Research Grant Application', NULL, NULL, 'Research Office', 'All Faculty', '2024-04-12', 'https://drive.google.com/file/d/sample4/view', 'Grant opportunity', 'soft_copy', NULL, NULL, 1, NULL, NULL, 'active', '2024-04-12 11:00:00', '2024-04-12 11:00:00', 'ADMIN LAN', 0, NULL, NULL, NULL, NULL, NULL, NULL, 1, 'DEPARTMENT', NULL, NULL, NULL),
+(304, 5, 8, 'ADM-2024-002', 'Administrative Order No. 5', NULL, NULL, 'Admin Office', 'All Staff', '2024-05-20', 'https://drive.google.com/file/d/sample5/view', 'New policy', 'hard_copy', NULL, NULL, 1, NULL, NULL, 'active', '2024-05-20 08:30:00', '2024-05-20 08:30:00', 'ADMIN LAN', 0, NULL, NULL, NULL, NULL, NULL, NULL, 1, 'DEPARTMENT', NULL, NULL, NULL),
+(305, 1000, 10, 'TECH-2024-001', 'System Maintenance Notice', NULL, NULL, 'IT Department', 'All Users', '2024-06-15', 'https://drive.google.com/file/d/sample6/view', 'Scheduled maintenance', 'soft_copy', NULL, NULL, 1, NULL, NULL, 'active', '2024-06-15 14:00:00', '2024-06-15 14:00:00', 'THIS IS ME', 0, NULL, NULL, NULL, NULL, NULL, NULL, 1, 'DEPARTMENT', NULL, NULL, NULL),
+(306, 5, 4, 'HR-2024-010', 'Leave Application Guidelines', NULL, NULL, 'HR Office', 'All Employees', '2024-07-08', 'https://drive.google.com/file/d/sample7/view', 'Updated guidelines', 'both', NULL, NULL, 1, NULL, NULL, 'active', '2024-07-08 09:15:00', '2024-07-08 09:15:00', 'ADMIN LAN', 0, NULL, NULL, NULL, NULL, NULL, NULL, 1, 'DEPARTMENT', NULL, NULL, NULL),
+(307, 5, 5, 'SA-2024-005', 'Student Scholarship Program', NULL, NULL, 'Student Affairs', 'Students', '2024-08-22', 'https://drive.google.com/file/d/sample8/view', 'Scholarship info', 'soft_copy', NULL, NULL, 1, NULL, NULL, 'active', '2024-08-22 10:30:00', '2024-08-22 10:30:00', 'ADMIN LAN', 0, NULL, NULL, NULL, NULL, NULL, NULL, 1, 'DEPARTMENT', NULL, NULL, NULL),
 (308, 5, 11, 'LEG-2024-003', 'Legal Compliance Memo', NULL, NULL, 'Legal Office', 'Admin', '2024-09-10', 'https://drive.google.com/file/d/sample9/view', 'Compliance requirements', 'hard_copy', NULL, NULL, 1, NULL, NULL, 'active', '2024-09-10 11:45:00', '2024-09-10 11:45:00', 'ADMIN LAN', 0, NULL, NULL, NULL, NULL, NULL, NULL, 1, 'SPECIFIC_USERS', NULL, NULL, NULL),
 (309, 5, 12, 'ARC-2024-001', 'Archive Policy Update', NULL, NULL, 'Archive Office', 'All Depts', '2024-10-05', 'https://drive.google.com/file/d/sample10/view', 'New archiving rules', 'soft_copy', NULL, NULL, 1, NULL, NULL, 'inactive', '2024-10-05 13:00:00', '2024-10-05 13:00:00', 'ADMIN LAN', 0, NULL, NULL, NULL, NULL, NULL, NULL, 1, 'ALL', NULL, NULL, NULL),
 (310, 5, 4, 'CAS-2025-002', 'CAS Seminar Invitation', NULL, NULL, 'CAS Dean', 'CAS Faculty', '2025-01-20', 'https://drive.google.com/file/d/sample11/view', 'Seminar details', 'soft_copy', NULL, NULL, 1, NULL, NULL, 'active', '2025-01-20 08:00:00', '2025-01-20 08:00:00', 'ADMIN LAN', 0, NULL, NULL, NULL, NULL, NULL, NULL, 1, 'DEPARTMENT', NULL, NULL, NULL),
 (311, 5, 5, 'CMBE-2025-002', 'CMBE Industry Partnership', NULL, NULL, 'CMBE Dean', 'CMBE Faculty', '2025-02-14', 'https://drive.google.com/file/d/sample12/view', 'Partnership program', 'both', NULL, NULL, 1, NULL, NULL, 'active', '2025-02-14 09:30:00', '2025-02-14 09:30:00', 'ADMIN LAN', 0, NULL, NULL, NULL, NULL, NULL, NULL, 1, 'DEPARTMENT', NULL, NULL, NULL),
 (312, 5, 6, 'CTE-2025-002', 'CTE Teaching Workshop', NULL, NULL, 'CTE Dean', 'CTE Faculty', '2025-03-18', 'https://drive.google.com/file/d/sample13/view', 'Workshop schedule', 'soft_copy', NULL, NULL, 1, NULL, NULL, 'active', '2025-03-18 10:00:00', '2025-03-18 10:00:00', 'ADMIN LAN', 0, NULL, NULL, NULL, NULL, NULL, NULL, 1, 'DEPARTMENT', NULL, NULL, NULL),
-(313, 5, 7, 'RES-2025-002', 'Research Publication Guidelines', NULL, NULL, 'Research Office', 'All Faculty', '2025-04-25', 'https://drive.google.com/file/d/sample14/view', 'Publication guide', 'soft_copy', NULL, NULL, 1, NULL, NULL, 'active', '2025-04-25 11:15:00', '2025-04-25 11:15:00', 'ADMIN LAN', 0, NULL, NULL, NULL, NULL, NULL, NULL, 1, 'ALL', NULL, NULL, NULL),
-(314, 5, 8, 'ADM-2025-003', 'Administrative Circular No. 8', NULL, NULL, 'Admin Office', 'All Staff', '2025-05-30', 'https://drive.google.com/file/d/sample15/view', 'Important notice', 'hard_copy', NULL, NULL, 1, NULL, NULL, 'active', '2025-05-30 08:45:00', '2025-05-30 08:45:00', 'ADMIN LAN', 0, NULL, NULL, NULL, NULL, NULL, NULL, 1, 'ALL', NULL, NULL, NULL),
-(315, 1000, 10, 'TECH-2025-002', 'Software Update Notification', NULL, NULL, 'IT Department', 'All Users', '2025-06-12', 'https://drive.google.com/file/d/sample16/view', 'System upgrade', 'soft_copy', NULL, NULL, 1, NULL, NULL, 'active', '2025-06-12 14:30:00', '2025-06-12 14:30:00', 'THIS IS ME', 0, NULL, NULL, NULL, NULL, NULL, NULL, 1, 'ALL', NULL, NULL, NULL),
-(316, 5, 4, 'HR-2025-011', 'Performance Evaluation Form', NULL, NULL, 'HR Office', 'All Employees', '2025-07-16', 'https://drive.google.com/file/d/sample17/view', 'Annual evaluation', 'both', NULL, NULL, 1, NULL, NULL, 'active', '2025-07-16 09:00:00', '2025-07-16 09:00:00', 'ADMIN LAN', 0, NULL, NULL, NULL, NULL, NULL, NULL, 1, 'ALL', NULL, NULL, NULL),
-(317, 5, 5, 'SA-2025-006', 'Student Council Election', NULL, NULL, 'Student Affairs', 'Students', '2025-08-20', 'https://drive.google.com/file/d/sample18/view', 'Election guidelines', 'soft_copy', NULL, NULL, 1, NULL, NULL, 'active', '2025-08-20 10:45:00', '2025-08-20 10:45:00', 'ADMIN LAN', 0, NULL, NULL, NULL, NULL, NULL, NULL, 1, 'ALL', NULL, NULL, NULL),
+(313, 5, 7, 'RES-2025-002', 'Research Publication Guidelines', NULL, NULL, 'Research Office', 'All Faculty', '2025-04-25', 'https://drive.google.com/file/d/sample14/view', 'Publication guide', 'soft_copy', NULL, NULL, 1, NULL, NULL, 'active', '2025-04-25 11:15:00', '2025-04-25 11:15:00', 'ADMIN LAN', 0, NULL, NULL, NULL, NULL, NULL, NULL, 1, 'DEPARTMENT', NULL, NULL, NULL),
+(314, 5, 8, 'ADM-2025-003', 'Administrative Circular No. 8', NULL, NULL, 'Admin Office', 'All Staff', '2025-05-30', 'https://drive.google.com/file/d/sample15/view', 'Important notice', 'hard_copy', NULL, NULL, 1, NULL, NULL, 'active', '2025-05-30 08:45:00', '2025-05-30 08:45:00', 'ADMIN LAN', 0, NULL, NULL, NULL, NULL, NULL, NULL, 1, 'DEPARTMENT', NULL, NULL, NULL),
+(315, 1000, 10, 'TECH-2025-002', 'Software Update Notification', NULL, NULL, 'IT Department', 'All Users', '2025-06-12', 'https://drive.google.com/file/d/sample16/view', 'System upgrade', 'soft_copy', NULL, NULL, 1, NULL, NULL, 'active', '2025-06-12 14:30:00', '2025-06-12 14:30:00', 'THIS IS ME', 0, NULL, NULL, NULL, NULL, NULL, NULL, 1, 'DEPARTMENT', NULL, NULL, NULL),
+(316, 5, 4, 'HR-2025-011', 'Performance Evaluation Form', NULL, NULL, 'HR Office', 'All Employees', '2025-07-16', 'https://drive.google.com/file/d/sample17/view', 'Annual evaluation', 'both', NULL, NULL, 1, NULL, NULL, 'active', '2025-07-16 09:00:00', '2025-07-16 09:00:00', 'ADMIN LAN', 0, NULL, NULL, NULL, NULL, NULL, NULL, 1, 'DEPARTMENT', NULL, NULL, NULL),
+(317, 5, 5, 'SA-2025-006', 'Student Council Election', NULL, NULL, 'Student Affairs', 'Students', '2025-08-20', 'https://drive.google.com/file/d/sample18/view', 'Election guidelines', 'soft_copy', NULL, NULL, 1, NULL, NULL, 'active', '2025-08-20 10:45:00', '2025-08-20 10:45:00', 'ADMIN LAN', 0, NULL, NULL, NULL, NULL, NULL, NULL, 1, 'DEPARTMENT', NULL, NULL, NULL),
 (318, 5, 11, 'LEG-2025-004', 'Data Privacy Compliance', NULL, NULL, 'Legal Office', 'All Depts', '2025-09-15', 'https://drive.google.com/file/d/sample19/view', 'Privacy policy', 'hard_copy', NULL, NULL, 1, NULL, NULL, 'active', '2025-09-15 11:30:00', '2025-09-15 11:30:00', 'ADMIN LAN', 0, NULL, NULL, NULL, NULL, NULL, NULL, 1, 'ROLE_DEPARTMENT', NULL, NULL, NULL),
-(319, 5, 12, 'ARC-2025-002', 'Document Retention Schedule', NULL, NULL, 'Archive Office', 'All Depts', '2025-10-01', 'https://drive.google.com/file/d/sample20/view', 'Retention policy', 'soft_copy', NULL, NULL, 1, NULL, NULL, 'active', '2025-10-01 13:15:00', '2025-10-01 13:15:00', 'ADMIN LAN', 0, NULL, NULL, NULL, NULL, NULL, NULL, 1, 'ALL', NULL, NULL, NULL);
+(319, 5, 12, 'ARC-2025-002', 'Document Retention Schedule', NULL, NULL, 'Archive Office', 'All Depts', '2025-10-01', 'https://drive.google.com/file/d/sample20/view', 'Retention policy', 'soft_copy', NULL, NULL, 1, NULL, NULL, 'active', '2025-10-01 13:15:00', '2025-10-01 13:15:00', 'ADMIN LAN', 0, NULL, NULL, NULL, NULL, NULL, NULL, 1, 'ALL', NULL, NULL, NULL),
+-- Additional documents for 2020-2023 (year-over-year analytics)
+(400, 5, 4, 'CAS-2020-001', 'CAS Annual Report 2020', NULL, NULL, 'CAS Dean', 'CAS Faculty', '2020-03-15', 'https://drive.google.com/file/d/2020-1/view', 'Annual report', 'soft_copy', NULL, NULL, 1, NULL, NULL, 'active', '2020-03-15 08:00:00', '2020-03-15 08:00:00', 'ADMIN LAN', 0, NULL, NULL, NULL, NULL, NULL, NULL, 1, 'DEPARTMENT', NULL, NULL, NULL),
+(401, 5, 5, 'CMBE-2020-001', 'CMBE Strategic Plan 2020', NULL, NULL, 'CMBE Dean', 'CMBE Faculty', '2020-04-20', 'https://drive.google.com/file/d/2020-2/view', 'Strategic planning', 'both', NULL, NULL, 1, NULL, NULL, 'active', '2020-04-20 09:00:00', '2020-04-20 09:00:00', 'ADMIN LAN', 0, NULL, NULL, NULL, NULL, NULL, NULL, 1, 'DEPARTMENT', NULL, NULL, NULL),
+(402, 5, 6, 'CTE-2020-001', 'CTE Curriculum Update 2020', NULL, NULL, 'CTE Dean', 'CTE Faculty', '2020-05-10', 'https://drive.google.com/file/d/2020-3/view', 'Curriculum revision', 'soft_copy', NULL, NULL, 1, NULL, NULL, 'active', '2020-05-10 10:00:00', '2020-05-10 10:00:00', 'ADMIN LAN', 0, NULL, NULL, NULL, NULL, NULL, NULL, 1, 'DEPARTMENT', NULL, NULL, NULL),
+(403, 5, 4, 'LHS-2020-001', 'LHS Student Handbook 2020', NULL, NULL, 'LHS Principal', 'LHS Staff', '2020-06-15', 'https://drive.google.com/file/d/2020-4/view', 'Student handbook', 'hard_copy', NULL, NULL, 1, NULL, NULL, 'active', '2020-06-15 11:00:00', '2020-06-15 11:00:00', 'ADMIN LAN', 0, NULL, NULL, NULL, NULL, NULL, NULL, 1, 'DEPARTMENT', NULL, NULL, NULL),
+(404, 5, 7, 'RES-2020-001', 'Research Agenda 2020', NULL, NULL, 'Research Office', 'All Faculty', '2020-07-20', 'https://drive.google.com/file/d/2020-5/view', 'Research priorities', 'soft_copy', NULL, NULL, 1, NULL, NULL, 'active', '2020-07-20 08:30:00', '2020-07-20 08:30:00', 'ADMIN LAN', 0, NULL, NULL, NULL, NULL, NULL, NULL, 1, 'ALL', NULL, NULL, NULL),
+(405, 5, 4, 'CAS-2021-001', 'CAS Faculty Development 2021', NULL, NULL, 'CAS Dean', 'CAS Faculty', '2021-02-10', 'https://drive.google.com/file/d/2021-1/view', 'Faculty training', 'soft_copy', NULL, NULL, 1, NULL, NULL, 'active', '2021-02-10 08:00:00', '2021-02-10 08:00:00', 'ADMIN LAN', 0, NULL, NULL, NULL, NULL, NULL, NULL, 1, 'DEPARTMENT', NULL, NULL, NULL),
+(406, 5, 5, 'CMBE-2021-001', 'CMBE Accreditation Report 2021', NULL, NULL, 'CMBE Dean', 'CMBE Faculty', '2021-03-15', 'https://drive.google.com/file/d/2021-2/view', 'Accreditation docs', 'both', NULL, NULL, 1, NULL, NULL, 'active', '2021-03-15 09:00:00', '2021-03-15 09:00:00', 'ADMIN LAN', 0, NULL, NULL, NULL, NULL, NULL, NULL, 1, 'DEPARTMENT', NULL, NULL, NULL),
+(407, 5, 6, 'CTE-2021-001', 'CTE Assessment Plan 2021', NULL, NULL, 'CTE Dean', 'CTE Faculty', '2021-04-20', 'https://drive.google.com/file/d/2021-3/view', 'Assessment framework', 'soft_copy', NULL, NULL, 1, NULL, NULL, 'active', '2021-04-20 10:00:00', '2021-04-20 10:00:00', 'ADMIN LAN', 0, NULL, NULL, NULL, NULL, NULL, NULL, 1, 'DEPARTMENT', NULL, NULL, NULL),
+(408, 5, 4, 'LHS-2021-001', 'LHS Safety Protocol 2021', NULL, NULL, 'LHS Principal', 'LHS Staff', '2021-05-25', 'https://drive.google.com/file/d/2021-4/view', 'Safety guidelines', 'hard_copy', NULL, NULL, 1, NULL, NULL, 'active', '2021-05-25 11:00:00', '2021-05-25 11:00:00', 'ADMIN LAN', 0, NULL, NULL, NULL, NULL, NULL, NULL, 1, 'DEPARTMENT', NULL, NULL, NULL),
+(409, 5, 8, 'ADM-2021-001', 'Administrative Memo 2021', NULL, NULL, 'Admin Office', 'All Staff', '2021-06-30', 'https://drive.google.com/file/d/2021-5/view', 'Policy update', 'soft_copy', NULL, NULL, 1, NULL, NULL, 'active', '2021-06-30 08:30:00', '2021-06-30 08:30:00', 'ADMIN LAN', 0, NULL, NULL, NULL, NULL, NULL, NULL, 1, 'ALL', NULL, NULL, NULL),
+(410, 5, 4, 'CAS-2022-001', 'CAS Research Output 2022', NULL, NULL, 'CAS Dean', 'CAS Faculty', '2022-01-20', 'https://drive.google.com/file/d/2022-1/view', 'Research publications', 'soft_copy', NULL, NULL, 1, NULL, NULL, 'active', '2022-01-20 08:00:00', '2022-01-20 08:00:00', 'ADMIN LAN', 0, NULL, NULL, NULL, NULL, NULL, NULL, 1, 'DEPARTMENT', NULL, NULL, NULL),
+(411, 5, 5, 'CMBE-2022-001', 'CMBE Industry Linkage 2022', NULL, NULL, 'CMBE Dean', 'CMBE Faculty', '2022-02-25', 'https://drive.google.com/file/d/2022-2/view', 'Industry partnerships', 'both', NULL, NULL, 1, NULL, NULL, 'active', '2022-02-25 09:00:00', '2022-02-25 09:00:00', 'ADMIN LAN', 0, NULL, NULL, NULL, NULL, NULL, NULL, 1, 'DEPARTMENT', NULL, NULL, NULL),
+(412, 5, 6, 'CTE-2022-001', 'CTE Practicum Guidelines 2022', NULL, NULL, 'CTE Dean', 'CTE Faculty', '2022-03-30', 'https://drive.google.com/file/d/2022-3/view', 'Practicum manual', 'soft_copy', NULL, NULL, 1, NULL, NULL, 'active', '2022-03-30 10:00:00', '2022-03-30 10:00:00', 'ADMIN LAN', 0, NULL, NULL, NULL, NULL, NULL, NULL, 1, 'DEPARTMENT', NULL, NULL, NULL),
+(413, 5, 4, 'LHS-2022-001', 'LHS Enrollment Report 2022', NULL, NULL, 'LHS Principal', 'LHS Staff', '2022-04-15', 'https://drive.google.com/file/d/2022-4/view', 'Enrollment data', 'hard_copy', NULL, NULL, 1, NULL, NULL, 'active', '2022-04-15 11:00:00', '2022-04-15 11:00:00', 'ADMIN LAN', 0, NULL, NULL, NULL, NULL, NULL, NULL, 1, 'DEPARTMENT', NULL, NULL, NULL),
+(414, 5, 10, 'PROC-2022-001', 'Procurement Manual 2022', NULL, NULL, 'Procurement Office', 'All Depts', '2022-05-20', 'https://drive.google.com/file/d/2022-5/view', 'Procurement procedures', 'soft_copy', NULL, NULL, 1, NULL, NULL, 'active', '2022-05-20 08:30:00', '2022-05-20 08:30:00', 'ADMIN LAN', 0, NULL, NULL, NULL, NULL, NULL, NULL, 1, 'ALL', NULL, NULL, NULL),
+(415, 5, 4, 'CAS-2023-001', 'CAS Extension Program 2023', NULL, NULL, 'CAS Dean', 'CAS Faculty', '2023-01-15', 'https://drive.google.com/file/d/2023-1/view', 'Extension activities', 'soft_copy', NULL, NULL, 1, NULL, NULL, 'active', '2023-01-15 08:00:00', '2023-01-15 08:00:00', 'ADMIN LAN', 0, NULL, NULL, NULL, NULL, NULL, NULL, 1, 'DEPARTMENT', NULL, NULL, NULL),
+(416, 5, 5, 'CMBE-2023-001', 'CMBE Entrepreneurship 2023', NULL, NULL, 'CMBE Dean', 'CMBE Faculty', '2023-02-20', 'https://drive.google.com/file/d/2023-2/view', 'Entrepreneurship program', 'both', NULL, NULL, 1, NULL, NULL, 'active', '2023-02-20 09:00:00', '2023-02-20 09:00:00', 'ADMIN LAN', 0, NULL, NULL, NULL, NULL, NULL, NULL, 1, 'DEPARTMENT', NULL, NULL, NULL),
+(417, 5, 6, 'CTE-2023-001', 'CTE Licensure Exam 2023', NULL, NULL, 'CTE Dean', 'CTE Faculty', '2023-03-25', 'https://drive.google.com/file/d/2023-3/view', 'LET preparation', 'soft_copy', NULL, NULL, 1, NULL, NULL, 'active', '2023-03-25 10:00:00', '2023-03-25 10:00:00', 'ADMIN LAN', 0, NULL, NULL, NULL, NULL, NULL, NULL, 1, 'DEPARTMENT', NULL, NULL, NULL),
+(418, 5, 4, 'LHS-2023-001', 'LHS Academic Excellence 2023', NULL, NULL, 'LHS Principal', 'LHS Staff', '2023-04-30', 'https://drive.google.com/file/d/2023-4/view', 'Excellence program', 'hard_copy', NULL, NULL, 1, NULL, NULL, 'active', '2023-04-30 11:00:00', '2023-04-30 11:00:00', 'ADMIN LAN', 0, NULL, NULL, NULL, NULL, NULL, NULL, 1, 'DEPARTMENT', NULL, NULL, NULL),
+(419, 5, 11, 'LEG-2023-001', 'Legal Compliance 2023', NULL, NULL, 'Legal Office', 'All Depts', '2023-05-15', 'https://drive.google.com/file/d/2023-5/view', 'Compliance report', 'soft_copy', NULL, NULL, 1, NULL, NULL, 'active', '2023-05-15 08:30:00', '2023-05-15 08:30:00', 'ADMIN LAN', 0, NULL, NULL, NULL, NULL, NULL, NULL, 1, 'SPECIFIC_USERS', NULL, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -340,7 +361,42 @@ CREATE TABLE `document_departments` (
 INSERT INTO `document_departments` (`doc_id`, `department_id`) VALUES
 (131, 999),
 (211, 999),
-(212, 1);
+(212, 1),
+-- Link sample documents to specific departments
+(300, 1),  -- CAS-2024-001 -> CAS
+(301, 2),  -- CMBE-2024-001 -> CMBE
+(302, 3),  -- CTE-2024-001 -> CTE
+(310, 1),  -- CAS-2025-002 -> CAS
+(311, 2),  -- CMBE-2025-002 -> CMBE
+(312, 3),  -- CTE-2025-002 -> CTE
+-- Add more department assignments for better visualization
+(303, 1),  -- Research Grant -> CAS
+(304, 2),  -- Admin Order -> CMBE
+(305, 3),  -- Tech Maintenance -> CTE
+(306, 4),  -- HR Guidelines -> LHS
+(307, 1),  -- Student Scholarship -> CAS
+(313, 2),  -- Research Publication -> CMBE
+(314, 3),  -- Admin Circular -> CTE
+(315, 4),  -- Software Update -> LHS
+(316, 1),  -- Performance Eval -> CAS
+(317, 2),  -- Student Council -> CMBE
+-- Department assignments for 2020-2023 documents
+(400, 1),  -- CAS-2020-001 -> CAS
+(401, 2),  -- CMBE-2020-001 -> CMBE
+(402, 3),  -- CTE-2020-001 -> CTE
+(403, 4),  -- LHS-2020-001 -> LHS
+(405, 1),  -- CAS-2021-001 -> CAS
+(406, 2),  -- CMBE-2021-001 -> CMBE
+(407, 3),  -- CTE-2021-001 -> CTE
+(408, 4),  -- LHS-2021-001 -> LHS
+(410, 1),  -- CAS-2022-001 -> CAS
+(411, 2),  -- CMBE-2022-001 -> CMBE
+(412, 3),  -- CTE-2022-001 -> CTE
+(413, 4),  -- LHS-2022-001 -> LHS
+(415, 1),  -- CAS-2023-001 -> CAS
+(416, 2),  -- CMBE-2023-001 -> CMBE
+(417, 3),  -- CTE-2023-001 -> CTE
+(418, 4);  -- LHS-2023-001 -> LHS
 
 -- --------------------------------------------------------
 
