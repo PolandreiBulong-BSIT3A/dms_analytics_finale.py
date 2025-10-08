@@ -236,35 +236,34 @@ if page == "📈 Dashboard":
         year_display = selected_year if selected_year != "All Years" else "All Time"
         st.markdown(f'<div class="dashboard-subtitle">{year_display} Overview</div>', unsafe_allow_html=True)
     with col_h2:
-        st.markdown(f"<div style='text-align: right; color: #6B7280; font-size: 0.9rem;'>Total Records<br/><span style='font-size: 1.5rem; font-weight: 600; color: #111827;'>{len(docs_df_full) + len(reqs_df_full):,}</span></div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='text-align: right; color: #6B7280; font-size: 0.9rem;'>Total Documents<br/><span style='font-size: 1.5rem; font-weight: 600; color: #111827;'>{len(docs_df_full):,}</span></div>", unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
     
     docs_df = docs_df_full.copy()
-    reqs_df = reqs_df_full.copy()
     
-    # Top row - Key metrics (6 cards like the image)
+    # Top row - Key metrics (6 cards)
     st.markdown("#### 📊 Key Metrics")
     m1, m2, m3, m4, m5, m6 = st.columns(6)
     
     total_docs = len(docs_df)
     active_docs = (docs_df['status'] == 'active').sum() if not docs_df.empty else 0
-    total_reqs = len(reqs_df)
-    completed_reqs = (reqs_df['status'] == 'completed').sum() if not reqs_df.empty else 0
-    pending_reqs = (reqs_df['status'] == 'pending').sum() if not reqs_df.empty else 0
-    completion_rate = (completed_reqs / total_reqs * 100) if total_reqs > 0 else 0
+    inactive_docs = total_docs - active_docs
+    deleted_docs = (docs_df.get('deleted', 0) == 1).sum() if not docs_df.empty else 0
+    folder_count = docs_df["folder_name"].nunique() if not docs_df.empty and "folder_name" in docs_df.columns else 0
+    doc_type_count = docs_df["doc_type_name"].nunique() if not docs_df.empty and "doc_type_name" in docs_df.columns else 0
     
     with m1:
         st.metric("Total Documents", f"{total_docs:,}", help="All documents in the system")
     with m2:
         st.metric("Active Docs", f"{active_docs:,}", help="Currently active documents")
     with m3:
-        st.metric("Completion Rate", f"{completion_rate:.1f}%", help="Request completion percentage")
+        st.metric("Inactive Docs", f"{inactive_docs:,}", help="Inactive documents")
     with m4:
-        st.metric("Total Requests", f"{total_reqs:,}", help="All document requests")
+        st.metric("Deleted Docs", f"{deleted_docs:,}", help="Deleted documents")
     with m5:
-        st.metric("Pending", f"{pending_reqs:,}", help="Requests awaiting action")
+        st.metric("Folders", f"{folder_count:,}", help="Number of folders")
     with m6:
-        st.metric("Completed", f"{completed_reqs:,}", help="Finished requests")
+        st.metric("Doc Types", f"{doc_type_count:,}", help="Number of document types")
     
     st.markdown("---")
     
@@ -284,9 +283,9 @@ if page == "📈 Dashboard":
             st.info("No date data available")
     
     with chart_col2:
-        st.markdown("**📊 Request Status Distribution**")
-        if not reqs_df.empty and "status" in reqs_df.columns:
-            status_counts = reqs_df["status"].value_counts().reset_index()
+        st.markdown("**📊 Document Status Distribution**")
+        if not docs_df.empty and "status" in docs_df.columns:
+            status_counts = docs_df["status"].value_counts().reset_index()
             status_counts.columns = ["Status", "Count"]
             fig_donut = px.pie(status_counts, names="Status", values="Count", hole=0.5)
             fig_donut.update_layout(height=300, margin=dict(l=0, r=0, t=20, b=0), showlegend=True)
@@ -296,31 +295,35 @@ if page == "📈 Dashboard":
     
     st.markdown("---")
     
-    # Third row - Additional metrics (6 more cards)
-    st.markdown("#### 📋 Additional Insights")
-    a1, a2, a3, a4, a5, a6 = st.columns(6)
+    # Third row - Department Assignment Chart
+    st.markdown("---")
+    st.markdown("**🏢 Document Assignment by Department**")
     
-    deleted_docs = (docs_df.get('deleted', 0) == 1).sum() if not docs_df.empty else 0
-    folder_count = docs_df["folder_name"].nunique() if not docs_df.empty and "folder_name" in docs_df.columns else 0
-    doc_type_count = docs_df["doc_type_name"].nunique() if not docs_df.empty and "doc_type_name" in docs_df.columns else 0
-    in_progress = (reqs_df['status'] == 'in_progress').sum() if not reqs_df.empty else 0
-    urgent_reqs = (reqs_df['priority'] == 'urgent').sum() if not reqs_df.empty and 'priority' in reqs_df.columns else 0
-    
-    # Calculate average processing time (mock for now)
-    avg_time = "2.3 days"
-    
-    with a1:
-        st.metric("Deleted Docs", f"{deleted_docs:,}")
-    with a2:
-        st.metric("Folders", f"{folder_count:,}")
-    with a3:
-        st.metric("Doc Types", f"{doc_type_count:,}")
-    with a4:
-        st.metric("In Progress", f"{in_progress:,}")
-    with a5:
-        st.metric("Urgent", f"{urgent_reqs:,}")
-    with a6:
-        st.metric("Avg. Time", avg_time)
+    if not docs_df.empty and "visibility" in docs_df.columns:
+        # Map visibility to departments
+        def map_to_department(vis):
+            if vis == "ALL":
+                return "ALL"
+            elif vis == "DEPARTMENT":
+                return "DEPARTMENT"
+            elif vis in ["SPECIFIC_USERS", "SPECIFIC_ROLES", "ROLE_DEPARTMENT"]:
+                return "Others (User Specific)"
+            else:
+                return vis
+        
+        docs_df["department"] = docs_df["visibility"].apply(map_to_department)
+        dept_counts = docs_df["department"].value_counts().reset_index()
+        dept_counts.columns = ["Department", "Count"]
+        
+        # Add caption
+        all_count = dept_counts[dept_counts["Department"] == "ALL"]["Count"].sum() if "ALL" in dept_counts["Department"].values else 0
+        st.caption(f"📌 **{all_count}** documents accessible to all departments")
+        
+        fig_dept = px.bar(dept_counts, x="Department", y="Count", color_discrete_sequence=PALETTE)
+        fig_dept.update_layout(height=300, margin=dict(l=0, r=0, t=20, b=0))
+        st.plotly_chart(fig_dept, use_container_width=True)
+    else:
+        st.info("No department data available")
 
 elif page == "📄 Documents Analytics":
     # Header
@@ -424,20 +427,30 @@ elif page == "📄 Documents Analytics":
                 fig.update_layout(height=350, margin=dict(l=0, r=0, t=30, b=0))
                 st.plotly_chart(fig, use_container_width=True)
         
-        # Row 3: Visibility
+        # Row 3: Department Assignment
         if "visibility" in f_docs.columns and not f_docs.empty:
             st.markdown("---")
-            st.markdown("**🔐 Access & Visibility Control**")
-            vis_all_options = ["ALL", "DEPARTMENT", "SPECIFIC_USERS", "SPECIFIC_ROLES", "ROLE_DEPARTMENT"]
-            v_counts = f_docs["visibility"].value_counts().reindex(vis_all_options, fill_value=0).reset_index()
-            v_counts.columns = ["visibility", "Count"]
-            public_docs = v_counts[v_counts["visibility"] == "ALL"]["Count"].sum()
-            restricted_docs = v_counts[v_counts["visibility"] != "ALL"]["Count"].sum()
-            if public_docs > restricted_docs:
-                st.caption(f"🌐 **Open Access**: {public_docs} documents are publicly visible")
-            else:
-                st.caption(f"🔒 **Controlled Access**: {restricted_docs} documents have restricted visibility")
-            fig = px.bar(v_counts, x="visibility", y="Count", color_discrete_sequence=PALETTE)
+            st.markdown("**🏢 Document Assignment by Department**")
+            
+            # Map visibility to departments
+            def map_to_department(vis):
+                if vis == "ALL":
+                    return "ALL"
+                elif vis == "DEPARTMENT":
+                    return "DEPARTMENT"
+                elif vis in ["SPECIFIC_USERS", "SPECIFIC_ROLES", "ROLE_DEPARTMENT"]:
+                    return "Others (User Specific)"
+                else:
+                    return vis
+            
+            f_docs["department"] = f_docs["visibility"].apply(map_to_department)
+            dept_counts = f_docs["department"].value_counts().reset_index()
+            dept_counts.columns = ["Department", "Count"]
+            
+            all_count = dept_counts[dept_counts["Department"] == "ALL"]["Count"].sum() if "ALL" in dept_counts["Department"].values else 0
+            st.caption(f"📌 **{all_count}** documents accessible to all departments")
+            
+            fig = px.bar(dept_counts, x="Department", y="Count", color_discrete_sequence=PALETTE)
             fig.update_layout(height=300, margin=dict(l=0, r=0, t=30, b=0))
             st.plotly_chart(fig, use_container_width=True)
     else:
