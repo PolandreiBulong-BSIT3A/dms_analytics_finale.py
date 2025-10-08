@@ -65,6 +65,13 @@ def apply_sort(df: pd.DataFrame, sort_col: Optional[str], ascending: bool) -> pd
     return df
 
 
+def reset_keys(keys: list[str]):
+    """Utility to clear a list of st.session_state keys if they exist."""
+    for k in keys:
+        if k in st.session_state:
+            del st.session_state[k]
+
+
 # ---------------
 # App UI
 # ---------------
@@ -243,6 +250,9 @@ with docs_tab:
         dcol_f, dcol_s = st.columns(2)
         with dcol_f:
             with st.expander("Filters", expanded=False):
+                # Search
+                search_text = st.text_input("Search (title/reference/created by)", key="doc_search")
+
                 exclude_deleted = st.checkbox("Exclude deleted", value=True, key="doc_exclude_deleted")
                 statuses = sorted([s for s in docs_df["status"].dropna().unique()])
                 status_sel = st.multiselect("Status", statuses, default=statuses, key="doc_status")
@@ -269,6 +279,38 @@ with docs_tab:
                 else:
                     dstart, dend = None, None
 
+                # Sort controls
+                sortable_cols = [c for c in [
+                    "doc_id", "title", "status", "visibility", "available_copy",
+                    "date_received", "created_at", "updated_at"
+                ] if c in docs_df.columns]
+                scol1, scol2 = st.columns([0.7, 0.3])
+                with scol1:
+                    sort_col_d = st.selectbox("Sort by", sortable_cols, index=0 if "doc_id" in sortable_cols else 0, key="doc_sort_col")
+                with scol2:
+                    asc_d = st.checkbox("Ascending", value=True, key="doc_sort_asc")
+
+                # Quick actions
+                q1, q2 = st.columns(2)
+                with q1:
+                    if st.button("Reset filters", key="doc_reset_btn"):
+                        reset_keys([
+                            "doc_exclude_deleted", "doc_status", "doc_visibility", "doc_copy",
+                            "doc_dtype", "doc_folder", "doc_date_between", "doc_search",
+                            "doc_sort_col", "doc_sort_asc"
+                        ])
+                        st.rerun()
+                with q2:
+                    if st.button("Select all", key="doc_select_all_btn"):
+                        st.session_state["doc_status"] = statuses
+                        st.session_state["doc_visibility"] = vis_all_options
+                        st.session_state["doc_copy"] = copy_vals
+                        if "doc_dtype" in st.session_state and 'dtype_vals' in locals():
+                            st.session_state["doc_dtype"] = dtype_vals
+                        if "doc_folder" in st.session_state and 'folder_vals' in locals():
+                            st.session_state["doc_folder"] = folder_vals
+                        st.rerun()
+
         f_docs = docs_df.copy()
         if status_sel:
             f_docs = f_docs[f_docs["status"].isin(status_sel)]
@@ -284,10 +326,17 @@ with docs_tab:
             f_docs = f_docs[(f_docs["deleted"].fillna(0) == 0)]
         if dstart and dend and "date_received" in f_docs.columns:
             f_docs = f_docs[(f_docs["date_received"].dt.date >= dstart) & (f_docs["date_received"].dt.date <= dend)]
+        # Text search across key columns
+        if st.session_state.get("doc_search"):
+            q = st.session_state["doc_search"].strip().lower()
+            search_cols = [c for c in ["title", "reference", "created_by_name"] if c in f_docs.columns]
+            if search_cols:
+                mask = False
+                for c in search_cols:
+                    mask = (mask | f_docs[c].astype(str).str.lower().str.contains(q, na=False)) if isinstance(mask, pd.Series) else f_docs[c].astype(str).str.lower().str.contains(q, na=False)
+                f_docs = f_docs[mask]
 
-        # Default sort for documents (no UI)
-        sort_col_d = "doc_id"
-        asc_d = True
+        # Sort for documents (from UI)
         f_docs = apply_sort(f_docs, sort_col_d, asc_d)
 
         # Display with friendly columns: Folder Name and Doc Type
@@ -411,6 +460,9 @@ with req_tab:
         rcol_f, rcol_s = st.columns(2)
         with rcol_f:
             with st.expander("Filters", expanded=False):
+                # Search
+                r_search = st.text_input("Search (title/action/role)", key="req_search")
+
                 r_statuses = ["pending", "in_progress", "completed", "cancelled"]
                 r_status_sel = st.multiselect("Status", r_statuses, default=r_statuses, key="req_status")
                 r_priorities = ["low", "medium", "high", "urgent"]
@@ -424,6 +476,33 @@ with req_tab:
                 else:
                     rstart, rend = None, None
 
+                # Sort controls
+                r_sortable = [c for c in [
+                    "document_action_id", "doc_id", "action_name", "assigned_to_role",
+                    "status", "priority", "due_date", "created_at", "updated_at"
+                ] if c in reqs_df.columns]
+                rs1, rs2 = st.columns([0.7, 0.3])
+                with rs1:
+                    r_sort_col = st.selectbox("Sort by", r_sortable, index=0, key="req_sort_col")
+                with rs2:
+                    r_sort_asc = st.checkbox("Ascending", value=True, key="req_sort_asc")
+
+                # Quick actions
+                rq1, rq2 = st.columns(2)
+                with rq1:
+                    if st.button("Reset filters", key="req_reset_btn"):
+                        reset_keys([
+                            "req_status", "req_priority", "req_role", "req_due_between",
+                            "req_search", "req_sort_col", "req_sort_asc"
+                        ])
+                        st.rerun()
+                with rq2:
+                    if st.button("Select all", key="req_select_all_btn"):
+                        st.session_state["req_status"] = r_statuses
+                        st.session_state["req_priority"] = r_priorities
+                        st.session_state["req_role"] = r_roles
+                        st.rerun()
+
         f_reqs = reqs_df.copy()
         if r_status_sel:
             f_reqs = f_reqs[f_reqs["status"].isin(r_status_sel)]
@@ -433,9 +512,18 @@ with req_tab:
             f_reqs = f_reqs[f_reqs["assigned_to_role"].isin(r_role_sel)]
         if rstart and rend and "due_date" in f_reqs.columns:
             f_reqs = f_reqs[(f_reqs["due_date"].dt.date >= rstart) & (f_reqs["due_date"].dt.date <= rend)]
+        # Text search
+        if st.session_state.get("req_search"):
+            q2 = st.session_state["req_search"].strip().lower()
+            r_search_cols = [c for c in ["document_title", "action_name", "assigned_to_role"] if c in f_reqs.columns]
+            if r_search_cols:
+                rmask = False
+                for c in r_search_cols:
+                    rmask = (rmask | f_reqs[c].astype(str).str.lower().str.contains(q2, na=False)) if isinstance(rmask, pd.Series) else f_reqs[c].astype(str).str.lower().str.contains(q2, na=False)
+                f_reqs = f_reqs[rmask]
 
-        # Default sort and table
-        f_reqs = apply_sort(f_reqs, "document_action_id", True)
+        # Sort and table
+        f_reqs = apply_sort(f_reqs, r_sort_col, r_sort_asc)
         display_cols_r = [
             c for c in [
                 "document_action_id",
