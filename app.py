@@ -173,10 +173,15 @@ docs_q = """
            d.date_received,
            d.created_at,
            d.updated_at,
-           d.created_by_name
+           d.created_by_name,
+           GROUP_CONCAT(DISTINCT dept.code SEPARATOR ', ') AS department_codes,
+           GROUP_CONCAT(DISTINCT dept.name SEPARATOR ', ') AS department_names
     FROM dms_documents d
     LEFT JOIN folders f ON d.folder_id = f.folder_id
     LEFT JOIN document_types t ON d.doc_type = t.type_id
+    LEFT JOIN document_departments dd ON d.doc_id = dd.doc_id
+    LEFT JOIN departments dept ON dd.department_id = dept.department_id
+    GROUP BY d.doc_id
 """
 requests_q = """
     SELECT da.document_action_id,
@@ -300,18 +305,22 @@ if page == "📈 Dashboard":
     st.markdown("**🏢 Document Assignment by Department**")
     
     if not docs_df.empty and "visibility" in docs_df.columns:
-        # Map visibility to departments
-        def map_to_department(vis):
+        # Map visibility and department_codes to specific departments
+        def map_to_department(row):
+            vis = row.get("visibility", "")
+            dept_codes = row.get("department_codes", "")
+            
             if vis == "ALL":
                 return "ALL"
-            elif vis == "DEPARTMENT":
-                return "DEPARTMENT"
+            elif vis == "DEPARTMENT" and pd.notna(dept_codes) and dept_codes:
+                # Return the actual department code(s)
+                return dept_codes
             elif vis in ["SPECIFIC_USERS", "SPECIFIC_ROLES", "ROLE_DEPARTMENT"]:
                 return "Others (User Specific)"
             else:
-                return vis
+                return "Unassigned"
         
-        docs_df["department"] = docs_df["visibility"].apply(map_to_department)
+        docs_df["department"] = docs_df.apply(map_to_department, axis=1)
         dept_counts = docs_df["department"].value_counts().reset_index()
         dept_counts.columns = ["Department", "Count"]
         
@@ -432,18 +441,22 @@ elif page == "📄 Documents Analytics":
             st.markdown("---")
             st.markdown("**🏢 Document Assignment by Department**")
             
-            # Map visibility to departments
-            def map_to_department(vis):
+            # Map visibility and department_codes to specific departments
+            def map_to_department(row):
+                vis = row.get("visibility", "")
+                dept_codes = row.get("department_codes", "")
+                
                 if vis == "ALL":
                     return "ALL"
-                elif vis == "DEPARTMENT":
-                    return "DEPARTMENT"
+                elif vis == "DEPARTMENT" and pd.notna(dept_codes) and dept_codes:
+                    # Return the actual department code(s)
+                    return dept_codes
                 elif vis in ["SPECIFIC_USERS", "SPECIFIC_ROLES", "ROLE_DEPARTMENT"]:
                     return "Others (User Specific)"
                 else:
-                    return vis
+                    return "Unassigned"
             
-            f_docs["department"] = f_docs["visibility"].apply(map_to_department)
+            f_docs["department"] = f_docs.apply(map_to_department, axis=1)
             dept_counts = f_docs["department"].value_counts().reset_index()
             dept_counts.columns = ["Department", "Count"]
             
