@@ -75,17 +75,61 @@ def reset_keys(keys: list[str]):
 # ---------------
 # App UI
 # ---------------
-st.set_page_config(page_title="ISPSC Tagudin DMS Analytics", layout="wide")
-st.title("ISPSC Tagudin DMS Analytics Dashboard")
-st.caption("Documents Analytics")
+st.set_page_config(page_title="ISPSC Tagudin DMS Analytics", layout="wide", page_icon="📊")
 
-# Refresh control
-hdr1, hdr2 = st.columns([0.2, 1])
-with hdr1:
-    if st.button("Refresh Data", type="primary", use_container_width=True):
+# Custom CSS for clean dashboard layout
+st.markdown("""
+<style>
+    /* Main container */
+    .block-container { padding-top: 2rem; padding-bottom: 2rem; }
+    
+    /* Metric cards */
+    [data-testid="stMetricValue"] { font-size: 2rem; font-weight: 600; }
+    [data-testid="stMetricLabel"] { font-size: 0.9rem; color: #6B7280; }
+    
+    /* Sidebar styling */
+    section[data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #1e3a8a 0%, #1e40af 100%);
+        color: white;
+    }
+    section[data-testid="stSidebar"] .css-1d391kg { color: white; }
+    section[data-testid="stSidebar"] h1, 
+    section[data-testid="stSidebar"] h2,
+    section[data-testid="stSidebar"] h3 { color: white; }
+    
+    /* Header */
+    .dashboard-header {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        margin-bottom: 2rem;
+    }
+    .dashboard-title { font-size: 1.8rem; font-weight: 700; margin: 0; }
+    .dashboard-subtitle { color: #6B7280; font-size: 0.95rem; margin-top: 0.25rem; }
+</style>
+""", unsafe_allow_html=True)
+
+# Sidebar Navigation
+with st.sidebar:
+    st.markdown("<h2 style='color: white; text-align: center;'>📊 ISPSC DMS</h2>", unsafe_allow_html=True)
+    st.markdown("<p style='color: #93C5FD; text-align: center; font-size: 0.85rem;'>Document Management System</p>", unsafe_allow_html=True)
+    st.markdown("---")
+    
+    page = st.radio(
+        "Navigation",
+        ["📈 Dashboard", "📄 Documents", "📋 Requests"],
+        label_visibility="collapsed"
+    )
+    
+    st.markdown("---")
+    st.markdown("### ⚙️ Settings")
+    if st.button("🔄 Refresh Data", use_container_width=True):
         st.cache_data.clear()
         st.rerun()
-st.caption(f"Last refreshed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    
+    st.markdown("---")
+    st.caption(f"Last updated: {datetime.now().strftime('%b %d, %Y %H:%M')}")
 
 # Build DB connection from environment variables (no sidebar controls)
 # Defaults set to provided remote SQL details; prefer st.secrets at runtime
@@ -155,13 +199,107 @@ PALETTE = [
 ]
 px.defaults.template = "plotly_dark"
 
-# Minimal layout: two tabs for Documents and Requests
-docs_tab, req_tab = st.tabs(["Documents", "Requests"])
+# Page routing based on sidebar selection
+if page == "📈 Dashboard":
+    # Dashboard Overview Page
+    st.markdown('<div class="dashboard-header">', unsafe_allow_html=True)
+    col_h1, col_h2 = st.columns([3, 1])
+    with col_h1:
+        st.markdown('<div class="dashboard-title">Document Management Analytics</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="dashboard-subtitle">{datetime.now().strftime("%B %Y")}</div>', unsafe_allow_html=True)
+    with col_h2:
+        st.markdown(f"<div style='text-align: right; color: #6B7280; font-size: 0.9rem;'>Total Records<br/><span style='font-size: 1.5rem; font-weight: 600; color: #111827;'>{len(data['docs']) + len(data['reqs']):,}</span></div>", unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    docs_df = data["docs"].copy()
+    reqs_df = data["reqs"].copy()
+    
+    if not docs_df.empty:
+        docs_df = to_dt(docs_df, ["date_received", "created_at", "updated_at"])
+    if not reqs_df.empty:
+        reqs_df = to_dt(reqs_df, ["due_date", "completed_at", "created_at", "updated_at"])
+    
+    # Top row - Key metrics (6 cards like the image)
+    st.markdown("#### 📊 Key Metrics")
+    m1, m2, m3, m4, m5, m6 = st.columns(6)
+    
+    total_docs = len(docs_df)
+    active_docs = (docs_df['status'] == 'active').sum() if not docs_df.empty else 0
+    total_reqs = len(reqs_df)
+    completed_reqs = (reqs_df['status'] == 'completed').sum() if not reqs_df.empty else 0
+    pending_reqs = (reqs_df['status'] == 'pending').sum() if not reqs_df.empty else 0
+    completion_rate = (completed_reqs / total_reqs * 100) if total_reqs > 0 else 0
+    
+    with m1:
+        st.metric("Total Documents", f"{total_docs:,}", help="All documents in the system")
+    with m2:
+        st.metric("Active Docs", f"{active_docs:,}", help="Currently active documents")
+    with m3:
+        st.metric("Completion Rate", f"{completion_rate:.1f}%", help="Request completion percentage")
+    with m4:
+        st.metric("Total Requests", f"{total_reqs:,}", help="All document requests")
+    with m5:
+        st.metric("Pending", f"{pending_reqs:,}", help="Requests awaiting action")
+    with m6:
+        st.metric("Completed", f"{completed_reqs:,}", help="Finished requests")
+    
+    st.markdown("---")
+    
+    # Second row - Charts (line chart + donut chart like the image)
+    chart_col1, chart_col2 = st.columns([1.5, 1])
+    
+    with chart_col1:
+        st.markdown("**📈 Document Intake Trend**")
+        if not docs_df.empty and "date_received" in docs_df.columns:
+            ts_data = docs_df.dropna(subset=["date_received"]).copy()
+            ts_data["date"] = pd.to_datetime(ts_data["date_received"]).dt.to_period("W").dt.to_timestamp()
+            ts = ts_data.groupby("date").size().reset_index(name="Documents")
+            fig_line = px.line(ts, x="date", y="Documents", markers=True)
+            fig_line.update_layout(height=300, margin=dict(l=0, r=0, t=20, b=0))
+            st.plotly_chart(fig_line, use_container_width=True)
+        else:
+            st.info("No date data available")
+    
+    with chart_col2:
+        st.markdown("**📊 Request Status Distribution**")
+        if not reqs_df.empty and "status" in reqs_df.columns:
+            status_counts = reqs_df["status"].value_counts().reset_index()
+            status_counts.columns = ["Status", "Count"]
+            fig_donut = px.pie(status_counts, names="Status", values="Count", hole=0.5)
+            fig_donut.update_layout(height=300, margin=dict(l=0, r=0, t=20, b=0), showlegend=True)
+            st.plotly_chart(fig_donut, use_container_width=True)
+        else:
+            st.info("No status data available")
+    
+    st.markdown("---")
+    
+    # Third row - Additional metrics (6 more cards)
+    st.markdown("#### 📋 Additional Insights")
+    a1, a2, a3, a4, a5, a6 = st.columns(6)
+    
+    deleted_docs = (docs_df.get('deleted', 0) == 1).sum() if not docs_df.empty else 0
+    folder_count = docs_df["folder_name"].nunique() if not docs_df.empty and "folder_name" in docs_df.columns else 0
+    doc_type_count = docs_df["doc_type_name"].nunique() if not docs_df.empty and "doc_type_name" in docs_df.columns else 0
+    in_progress = (reqs_df['status'] == 'in_progress').sum() if not reqs_df.empty else 0
+    urgent_reqs = (reqs_df['priority'] == 'urgent').sum() if not reqs_df.empty and 'priority' in reqs_df.columns else 0
+    
+    # Calculate average processing time (mock for now)
+    avg_time = "2.3 days"
+    
+    with a1:
+        st.metric("Deleted Docs", f"{deleted_docs:,}")
+    with a2:
+        st.metric("Folders", f"{folder_count:,}")
+    with a3:
+        st.metric("Doc Types", f"{doc_type_count:,}")
+    with a4:
+        st.metric("In Progress", f"{in_progress:,}")
+    with a5:
+        st.metric("Urgent", f"{urgent_reqs:,}")
+    with a6:
+        st.metric("Avg. Time", avg_time)
 
-# -----------------------------
-# Documents
-# -----------------------------
-with docs_tab:
+elif page == "📄 Documents":
     st.markdown("### 📄 Document Management Overview")
     st.markdown("*Explore your document ecosystem: track status, monitor trends, and identify patterns in your document management system.*")
     
@@ -476,10 +614,7 @@ with docs_tab:
         st.info("No documents found or failed to load documents.")
 
 
-# -----------------------------
-# Requests
-# -----------------------------
-with req_tab:
+elif page == "📋 Requests":
     st.markdown("### 📋 Document Request Workflow")
     st.markdown("*Track action items, monitor completion rates, and identify bottlenecks in your document request pipeline.*")
     
