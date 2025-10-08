@@ -75,7 +75,7 @@ def reset_keys(keys: list[str]):
 # ---------------
 # App UI
 # ---------------
-st.set_page_config(page_title="ISPSC Tagudin DMS Analytics", layout="wide", page_icon="📊")
+st.set_page_config(page_title="ISPSC Tagudin DMS Analytics", layout="wide")
 
 # Custom CSS for clean dashboard layout
 st.markdown("""
@@ -122,6 +122,10 @@ st.markdown("""
     /* Improve clickable labels */
     section[data-testid="stSidebar"] label { cursor: pointer; }
     
+    /* Minimal dot icon */
+    .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+    .dot-primary { background-color: #2563eb; }
+    
     /* Header */
     .dashboard-header {
         background: white;
@@ -137,18 +141,18 @@ st.markdown("""
 
 # Sidebar Navigation
 with st.sidebar:
-    st.markdown("<h2 style='color: #1f2937; text-align: center; margin-bottom: 0;'>📊 ISPSC DMS</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='color: #1f2937; text-align: center; margin-bottom: 0;'><span class='dot dot-primary'></span> ISPSC DMS</h2>", unsafe_allow_html=True)
     st.markdown("<p style='color: #6b7280; text-align: center; font-size: 0.85rem; margin-top: 0.25rem;'>Document Management System</p>", unsafe_allow_html=True)
     st.markdown("---")
     
     page = st.radio(
         "Navigation",
-        ["📈 Dashboard", "📄 Documents Analytics", "📋 Documents Table"],
+        ["Dashboard", "Documents Analytics", "Documents Table"],
         label_visibility="collapsed"
     )
     
     st.markdown("---")
-    st.markdown("### 📅 Year Filter")
+    st.markdown("### Year Filter")
     
     # Get available years from data (will be populated after data fetch)
     current_year = datetime.now().year
@@ -161,7 +165,7 @@ with st.sidebar:
     )
     
     st.markdown("---")
-    st.markdown("### 🏢 Department Filter")
+    st.markdown("### Department Filter")
     
     # Department filter options (multiselect)
     department_options = ["CAS", "CMBE", "CTE", "LHS", "Graduate School", "Others"]
@@ -174,7 +178,7 @@ with st.sidebar:
     )
     
     st.markdown("---")
-    st.markdown("### 📁 Folder Filter")
+    st.markdown("### Folder Filter")
     
     # Folder filter (multiselect - will be populated dynamically)
     selected_folders = st.multiselect(
@@ -187,7 +191,7 @@ with st.sidebar:
     )
     
     st.markdown("---")
-    st.markdown("### 📄 Document Type Filter")
+    st.markdown("### Document Type Filter")
     
     # Document type filter (multiselect)
     selected_doc_types = st.multiselect(
@@ -200,7 +204,7 @@ with st.sidebar:
     )
     
     st.markdown("---")
-    st.markdown("### 📊 Status Filter")
+    st.markdown("### Status Filter")
     
     # Status filter
     status_options = ["All Status", "Active", "Deleted"]
@@ -212,7 +216,7 @@ with st.sidebar:
     )
     
     st.markdown("---")
-    st.markdown("### 📅 Date Range Filter")
+    st.markdown("### Date Range Filter")
     
     # Date range filter
     use_date_range = st.checkbox("Enable date range filter", value=False)
@@ -385,7 +389,7 @@ if use_date_range and start_date and end_date:
         ]
 
 # Page routing based on sidebar selection
-if page == "📈 Dashboard":
+if page == "Dashboard":
     # Dashboard Overview Page
     st.markdown('<div class="dashboard-header">', unsafe_allow_html=True)
     col_h1, col_h2 = st.columns([3, 1])
@@ -401,7 +405,7 @@ if page == "📈 Dashboard":
     docs_df = docs_df_full.copy()
     
     # Top row - Key metrics (6 cards)
-    st.markdown("#### 📊 Key Metrics")
+    st.markdown("#### Key Metrics")
     m1, m2, m3, m4, m5, m6 = st.columns(6)
     
     total_docs = len(docs_df)
@@ -430,7 +434,7 @@ if page == "📈 Dashboard":
     chart_col1, chart_col2 = st.columns([1.5, 1])
     
     with chart_col1:
-        st.markdown("**📈 Document Intake Trend**")
+        st.markdown("**Document Intake Trend**")
         if not docs_df.empty and "date_received" in docs_df.columns:
             ts_data = docs_df.dropna(subset=["date_received"]).copy()
             ts_data["date"] = pd.to_datetime(ts_data["date_received"]).dt.to_period("W").dt.to_timestamp()
@@ -442,7 +446,7 @@ if page == "📈 Dashboard":
             st.info("No date data available")
     
     with chart_col2:
-        st.markdown("**📊 Document Status Distribution**")
+        st.markdown("**Document Status Distribution**")
         if not docs_df.empty and "status" in docs_df.columns:
             status_counts = docs_df["status"].value_counts().reset_index()
             status_counts.columns = ["Status", "Count"]
@@ -456,7 +460,7 @@ if page == "📈 Dashboard":
     
     # Third row - Department Assignment Chart
     st.markdown("---")
-    st.markdown("**🏢 Document Assignment by Department**")
+    st.markdown("**Document Assignment by Department**")
     
     if not docs_df.empty and "visibility" in docs_df.columns:
         # Map visibility and department_codes to specific departments
@@ -480,7 +484,7 @@ if page == "📈 Dashboard":
         
         # Add caption
         all_count = dept_counts[dept_counts["Department"] == "ALL"]["Count"].sum() if "ALL" in dept_counts["Department"].values else 0
-        st.caption(f"📌 **{all_count}** documents accessible to all departments")
+        st.caption(f"{all_count} documents accessible to all departments")
         
         fig_dept = px.bar(dept_counts, x="Department", y="Count", color_discrete_sequence=PALETTE)
         fig_dept.update_layout(height=300, margin=dict(l=0, r=0, t=20, b=0))
@@ -488,11 +492,11 @@ if page == "📈 Dashboard":
     else:
         st.info("No department data available")
 
-elif page == "📄 Documents Analytics":
+elif page == "Documents Analytics":
     # Header
     year_display = selected_year if selected_year != "All Years" else "All Time"
     dept_display = ", ".join(selected_departments) if selected_departments else "All Departments"
-    st.markdown(f"### 📄 Document Analytics - {year_display} - {dept_display}")
+    st.markdown(f"### Document Analytics - {year_display} - {dept_display}")
     st.markdown("*Visual insights into your document ecosystem: status trends, distribution patterns, and intake analysis.*")
     
     docs_df = docs_df_full.copy()
@@ -508,21 +512,21 @@ elif page == "📄 Documents Analytics":
         d_k1, d_k2, d_k3 = st.columns(3)
         with d_k1:
             st.metric("Total Documents", f"{total_docs:,}")
-            st.caption("📊 Your complete document repository")
+            st.caption("Your complete document repository")
         with d_k2:
             st.metric("Active Documents", f"{active_docs:,}", delta=f"{active_pct:.1f}% of total")
-            st.caption("✅ Currently accessible and in use")
+            st.caption("Currently accessible and in use")
         with d_k3:
             st.metric("Deleted Documents", f"{deleted_docs:,}")
-            st.caption("🗑️ Archived or removed from circulation")
+            st.caption("Archived or removed from circulation")
         
         # Insight banner
         if active_pct > 80:
-            st.success(f"💡 **Healthy System**: {active_pct:.1f}% of your documents are active, indicating good document lifecycle management.")
+            st.success(f"Healthy System: {active_pct:.1f}% of your documents are active, indicating good document lifecycle management.")
         elif active_pct > 50:
-            st.info(f"📌 **Moderate Activity**: {active_pct:.1f}% active documents. Consider reviewing document retention policies.")
+            st.info(f"Moderate Activity: {active_pct:.1f}% active documents. Consider reviewing document retention policies.")
         else:
-            st.warning(f"⚠️ **Low Activity**: Only {active_pct:.1f}% documents are active. Review your document retention policy.")
+            st.warning(f"Low Activity: Only {active_pct:.1f}% documents are active. Review your document retention policy.")
         
         st.markdown("---")
         
@@ -532,18 +536,18 @@ elif page == "📄 Documents Analytics":
         # Row 1: Status & Timeline
         c1, c2 = st.columns(2)
         with c1:
-            st.markdown("**📊 Status Distribution**")
+            st.markdown("**Status Distribution**")
             s_counts = f_docs["status"].value_counts().reset_index()
             s_counts.columns = ["status", "Count"]
             top_status = s_counts.iloc[0]["status"] if not s_counts.empty else "N/A"
             top_count = s_counts.iloc[0]["Count"] if not s_counts.empty else 0
-            st.caption(f"🔍 Most common: **{top_status}** ({top_count} documents)")
+            st.caption(f"Most common: {top_status} ({top_count} documents)")
             fig = px.pie(s_counts, names="status", values="Count", hole=0.4, color_discrete_sequence=PALETTE)
             fig.update_layout(height=350, margin=dict(l=0, r=0, t=30, b=0))
             st.plotly_chart(fig, use_container_width=True)
         
         with c2:
-            st.markdown("**📈 Document Intake Over Time**")
+            st.markdown("**Document Intake Over Time**")
             if "date_received" in f_docs.columns and not f_docs.empty:
                 ts_data = f_docs.dropna(subset=["date_received"]).copy()
                 ts_data["month"] = pd.to_datetime(ts_data["date_received"]).dt.to_period("M").dt.to_timestamp()
@@ -553,11 +557,11 @@ elif page == "📄 Documents Analytics":
                     recent_avg = ts.tail(3)["Documents"].mean()
                     older_avg = ts.head(3)["Documents"].mean()
                     if recent_avg > older_avg * 1.2:
-                        st.caption("📈 **Trend**: Intake is increasing")
+                        st.caption("Trend: Intake is increasing")
                     elif recent_avg < older_avg * 0.8:
-                        st.caption("📉 **Trend**: Intake is decreasing")
+                        st.caption("Trend: Intake is decreasing")
                     else:
-                        st.caption("➡️ **Trend**: Intake remains stable")
+                        st.caption("Trend: Intake remains stable")
                 
                 fig = px.line(ts, x="month", y="Documents", markers=True)
                 fig.update_layout(height=350, margin=dict(l=0, r=0, t=30, b=0))
@@ -571,22 +575,22 @@ elif page == "📄 Documents Analytics":
         
         with c3:
             if "folder_name" in f_docs.columns and not f_docs.empty:
-                st.markdown("**📁 Folder Distribution**")
+                st.markdown("**Folder Distribution**")
                 f_counts = f_docs["folder_name"].fillna("(No Folder)").value_counts().head(10).reset_index()
                 f_counts.columns = ["folder_name", "Count"]
                 total_folders = f_docs["folder_name"].nunique()
-                st.caption(f"📂 **{total_folders}** folders in use")
+                st.caption(f"{total_folders} folders in use")
                 fig = px.bar(f_counts, x="Count", y="folder_name", orientation="h", color_discrete_sequence=PALETTE)
                 fig.update_layout(height=350, margin=dict(l=0, r=0, t=30, b=0), yaxis={'categoryorder':'total ascending'})
                 st.plotly_chart(fig, use_container_width=True)
         
         with c4:
             if "doc_type_name" in f_docs.columns and not f_docs.empty:
-                st.markdown("**📋 Document Type Breakdown**")
+                st.markdown("**Document Type Breakdown**")
                 dt_counts = f_docs["doc_type_name"].fillna("(No Type)").value_counts().reset_index()
                 dt_counts.columns = ["doc_type_name", "Count"]
                 type_count = len(dt_counts)
-                st.caption(f"📑 **{type_count}** document types")
+                st.caption(f"{type_count} document types")
                 fig = px.pie(dt_counts, names="doc_type_name", values="Count", hole=0.4, color_discrete_sequence=PALETTE)
                 fig.update_layout(height=350, margin=dict(l=0, r=0, t=30, b=0))
                 st.plotly_chart(fig, use_container_width=True)
@@ -616,7 +620,7 @@ elif page == "📄 Documents Analytics":
             dept_counts.columns = ["Department", "Count"]
             
             all_count = dept_counts[dept_counts["Department"] == "ALL"]["Count"].sum() if "ALL" in dept_counts["Department"].values else 0
-            st.caption(f"📌 **{all_count}** documents accessible to all departments")
+            st.caption(f"{all_count} documents accessible to all departments")
             
             fig = px.bar(dept_counts, x="Department", y="Count", color_discrete_sequence=PALETTE)
             fig.update_layout(height=300, margin=dict(l=0, r=0, t=30, b=0))
@@ -624,11 +628,11 @@ elif page == "📄 Documents Analytics":
     else:
         st.info("No documents found or failed to load documents.")
 
-elif page == "📋 Documents Table":
+elif page == "Documents Table":
     # Header
     year_display = selected_year if selected_year != "All Years" else "All Time"
     dept_display = ", ".join(selected_departments) if selected_departments else "All Departments"
-    st.markdown(f"### 📋 Documents Table - {year_display} - {dept_display}")
+    st.markdown(f"### Documents Table - {year_display} - {dept_display}")
     st.markdown("*Complete list of documents with all details in tabular format.*")
     
     docs_df = docs_df_full.copy()
@@ -638,7 +642,7 @@ elif page == "📋 Documents Table":
         st.markdown(f"**Showing {len(docs_df):,} documents**")
         
         # Add search functionality
-        search_term = st.text_input("🔍 Search documents (title, reference, from, to)", "")
+        search_term = st.text_input("Search documents (title, reference, from, to)", "")
         
         if search_term:
             search_cols = ["title", "reference", "from_field", "to_field"]
