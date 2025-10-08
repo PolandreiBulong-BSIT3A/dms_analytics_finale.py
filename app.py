@@ -162,19 +162,38 @@ docs_tab, req_tab = st.tabs(["Documents", "Requests"])
 # Documents
 # -----------------------------
 with docs_tab:
-    st.caption("Documents")
+    st.markdown("### 📄 Document Management Overview")
+    st.markdown("*Explore your document ecosystem: track status, monitor trends, and identify patterns in your document management system.*")
+    
     docs_df = data["docs"].copy()
     if not docs_df.empty:
         docs_df = to_dt(docs_df, ["date_received", "created_at", "updated_at"]) 
 
-        # KPI cards
+        # Calculate insights
+        total_docs = len(docs_df)
+        active_docs = (docs_df['status'] == 'active').sum()
+        deleted_docs = (docs_df.get('deleted', 0) == 1).sum()
+        active_pct = (active_docs / total_docs * 100) if total_docs > 0 else 0
+        
+        # KPI cards with storytelling
         d_k1, d_k2, d_k3 = st.columns(3)
         with d_k1:
-            st.metric("Total Documents", f"{len(docs_df):,}")
+            st.metric("Total Documents", f"{total_docs:,}")
+            st.caption("📊 Your complete document repository")
         with d_k2:
-            st.metric("Active Status", f"{(docs_df['status'] == 'active').sum():,}")
+            st.metric("Active Documents", f"{active_docs:,}", delta=f"{active_pct:.1f}% of total")
+            st.caption("✅ Currently accessible and in use")
         with d_k3:
-            st.metric("Deleted Flag", f"{(docs_df.get('deleted', 0) == 1).sum():,}")
+            st.metric("Deleted Documents", f"{deleted_docs:,}")
+            st.caption("🗑️ Archived or removed from circulation")
+        
+        # Insight banner
+        if active_pct > 80:
+            st.success(f"💡 **Healthy System**: {active_pct:.1f}% of your documents are active, indicating good document lifecycle management.")
+        elif active_pct > 50:
+            st.info(f"📌 **Moderate Activity**: {active_pct:.1f}% active documents. Consider reviewing inactive documents for archival.")
+        else:
+            st.warning(f"⚠️ **Low Activity**: Only {active_pct:.1f}% documents are active. Review your document retention policy.")
 
         dcol_f, dcol_s = st.columns(2)
         with dcol_f:
@@ -302,12 +321,22 @@ with docs_tab:
             granularity_map = {"Day": "D", "Week": "W", "Month": "M"}
             granularity = st.selectbox("Time granularity", list(granularity_map.keys()), index=0, key="doc_granularity")
 
+        # Storytelling: Chart insights
+        st.markdown("---")
+        st.markdown("#### 📈 Visual Analytics & Trends")
+        
         c3, c4 = st.columns(2)
         with c3:
             if show_d_status:
-                st.caption("Documents by Status")
+                st.markdown("**Status Distribution**")
                 s_counts = f_docs["status"].value_counts().reset_index()
                 s_counts.columns = ["status", "Count"]
+                
+                # Add insight
+                top_status = s_counts.iloc[0]["status"] if not s_counts.empty else "N/A"
+                top_count = s_counts.iloc[0]["Count"] if not s_counts.empty else 0
+                st.caption(f"🔍 Most common status: **{top_status}** ({top_count} documents)")
+                
                 if d_status_type == "Bar":
                     fig = px.bar(s_counts, x="status", y="Count", color_discrete_sequence=PALETTE)
                 else:
@@ -315,7 +344,7 @@ with docs_tab:
                 st.plotly_chart(fig, use_container_width=True)
         with c4:
             if show_d_time:
-                st.caption("Documents over Time (date_received)")
+                st.markdown("**Document Intake Timeline**")
                 if "date_received" in f_docs.columns and not f_docs.empty:
                     period = granularity_map[granularity]
                     ts = (
@@ -324,6 +353,18 @@ with docs_tab:
                              .reset_index(name="Count")
                     )
                     ts["date"] = ts["date_received"].dt.to_timestamp()
+                    
+                    # Add trend insight
+                    if len(ts) >= 2:
+                        recent_avg = ts.tail(3)["Count"].mean()
+                        older_avg = ts.head(3)["Count"].mean()
+                        if recent_avg > older_avg * 1.2:
+                            st.caption("📈 **Trend**: Document intake is increasing over time")
+                        elif recent_avg < older_avg * 0.8:
+                            st.caption("📉 **Trend**: Document intake is decreasing")
+                        else:
+                            st.caption("➡️ **Trend**: Document intake remains stable")
+                    
                     if d_time_type == "Line":
                         fig = px.line(ts, x="date", y="Count")
                     else:
@@ -334,9 +375,17 @@ with docs_tab:
 
         # Optional: Documents by Folder chart
         if show_d_folder and "folder_name" in f_docs.columns and not f_docs.empty:
-            st.caption("Documents by Folder")
+            st.markdown("---")
+            st.markdown("**📁 Folder Organization**")
             f_counts = f_docs["folder_name"].fillna("(No Folder)").value_counts().reset_index()
             f_counts.columns = ["folder_name", "Count"]
+            
+            # Folder insights
+            total_folders = len(f_counts)
+            top_folder = f_counts.iloc[0]["folder_name"] if not f_counts.empty else "N/A"
+            top_folder_count = f_counts.iloc[0]["Count"] if not f_counts.empty else 0
+            st.caption(f"📂 **{total_folders}** folders in use | Top folder: **{top_folder}** ({top_folder_count} docs)")
+            
             if d_folder_type == "Bar":
                 fig = px.bar(f_counts, x="folder_name", y="Count", color_discrete_sequence=PALETTE)
             else:
@@ -345,9 +394,18 @@ with docs_tab:
 
         # Optional: Documents by Doc Type chart
         if show_d_dtype and "doc_type_name" in f_docs.columns and not f_docs.empty:
-            st.caption("Documents by Doc Type")
+            st.markdown("---")
+            st.markdown("**📋 Document Type Breakdown**")
             dt_counts = f_docs["doc_type_name"].fillna("(No Type)").value_counts().reset_index()
             dt_counts.columns = ["doc_type_name", "Count"]
+            
+            # Type diversity insight
+            type_count = len(dt_counts)
+            dominant_type = dt_counts.iloc[0]["doc_type_name"] if not dt_counts.empty else "N/A"
+            dominant_pct = (dt_counts.iloc[0]["Count"] / dt_counts["Count"].sum() * 100) if not dt_counts.empty else 0
+            
+            st.caption(f"📑 **{type_count}** document types | Most common: **{dominant_type}** ({dominant_pct:.1f}% of all documents)")
+            
             if d_dtype_type == "Bar":
                 fig = px.bar(dt_counts, x="doc_type_name", y="Count", color_discrete_sequence=PALETTE)
             else:
@@ -356,15 +414,64 @@ with docs_tab:
 
         # Documents by Visibility pie
         if show_d_visibility and "visibility" in f_docs.columns and not f_docs.empty:
-            st.caption("Documents by Visibility")
+            st.markdown("---")
+            st.markdown("**🔐 Access & Visibility Control**")
             vis_all_options = ["ALL", "DEPARTMENT", "SPECIFIC_USERS", "SPECIFIC_ROLES", "ROLE_DEPARTMENT"]
             v_counts = f_docs["visibility"].value_counts().reindex(vis_all_options, fill_value=0).reset_index()
             v_counts.columns = ["visibility", "Count"]
+            
+            # Visibility insight
+            public_docs = v_counts[v_counts["visibility"] == "ALL"]["Count"].sum()
+            restricted_docs = v_counts[v_counts["visibility"] != "ALL"]["Count"].sum()
+            
+            if public_docs > restricted_docs:
+                st.caption(f"🌐 **Open Access**: {public_docs} documents are publicly visible, promoting transparency")
+            else:
+                st.caption(f"🔒 **Controlled Access**: {restricted_docs} documents have restricted visibility for security")
+            
             if d_visibility_type == "Pie":
                 fig = px.pie(v_counts, names="visibility", values="Count", hole=0.3, color_discrete_sequence=PALETTE)
             else:
                 fig = px.bar(v_counts, x="visibility", y="Count", color_discrete_sequence=PALETTE)
             st.plotly_chart(fig, use_container_width=True)
+        
+        # Actionable Summary
+        st.markdown("---")
+        st.markdown("### 💡 Key Takeaways & Recommendations")
+        
+        col_a, col_b = st.columns(2)
+        with col_a:
+            st.markdown("**📌 What the data tells us:**")
+            insights = []
+            if active_pct > 80:
+                insights.append("✓ Strong document lifecycle management")
+            if "folder_name" in f_docs.columns:
+                folder_diversity = f_docs["folder_name"].nunique()
+                if folder_diversity > 5:
+                    insights.append(f"✓ Well-organized with {folder_diversity} folders")
+            if "doc_type_name" in f_docs.columns:
+                type_diversity = f_docs["doc_type_name"].nunique()
+                if type_diversity > 3:
+                    insights.append(f"✓ Diverse document types ({type_diversity} categories)")
+            
+            for insight in insights:
+                st.markdown(f"- {insight}")
+        
+        with col_b:
+            st.markdown("**🎯 Suggested Actions:**")
+            actions = []
+            if deleted_docs > total_docs * 0.2:
+                actions.append("Review and permanently archive old deleted documents")
+            if active_pct < 50:
+                actions.append("Audit inactive documents for potential archival")
+            if restricted_docs < public_docs * 0.1:
+                actions.append("Consider adding access controls for sensitive documents")
+            
+            if not actions:
+                actions.append("System is well-maintained! Continue current practices")
+            
+            for action in actions:
+                st.markdown(f"- {action}")
     else:
         st.info("No documents found or failed to load documents.")
 
@@ -373,19 +480,44 @@ with docs_tab:
 # Requests
 # -----------------------------
 with req_tab:
-    st.caption("Document Requests")
+    st.markdown("### 📋 Document Request Workflow")
+    st.markdown("*Track action items, monitor completion rates, and identify bottlenecks in your document request pipeline.*")
+    
     reqs_df = data["reqs"].copy()
     if not reqs_df.empty:
         reqs_df = to_dt(reqs_df, ["due_date", "completed_at", "created_at", "updated_at"]) 
 
-        # KPI cards
-        r_k1, r_k2, r_k3 = st.columns(3)
+        # Calculate insights
+        total_reqs = len(reqs_df)
+        pending_reqs = (reqs_df['status'] == 'pending').sum()
+        completed_reqs = (reqs_df['status'] == 'completed').sum()
+        in_progress_reqs = (reqs_df['status'] == 'in_progress').sum()
+        completion_rate = (completed_reqs / total_reqs * 100) if total_reqs > 0 else 0
+        
+        # KPI cards with storytelling
+        r_k1, r_k2, r_k3, r_k4 = st.columns(4)
         with r_k1:
-            st.metric("Total Requests", f"{len(reqs_df):,}")
+            st.metric("Total Requests", f"{total_reqs:,}")
+            st.caption("📊 All document action items")
         with r_k2:
-            st.metric("Pending", f"{(reqs_df['status'] == 'pending').sum():,}")
+            st.metric("Pending", f"{pending_reqs:,}")
+            st.caption("⏳ Awaiting action")
         with r_k3:
-            st.metric("Completed", f"{(reqs_df['status'] == 'completed').sum():,}")
+            st.metric("In Progress", f"{in_progress_reqs:,}")
+            st.caption("🔄 Currently being worked on")
+        with r_k4:
+            st.metric("Completed", f"{completed_reqs:,}", delta=f"{completion_rate:.1f}% done")
+            st.caption("✅ Successfully finished")
+        
+        # Performance insight
+        if completion_rate >= 70:
+            st.success(f"🎯 **Excellent Performance**: {completion_rate:.1f}% completion rate shows strong workflow efficiency!")
+        elif completion_rate >= 50:
+            st.info(f"📊 **Good Progress**: {completion_rate:.1f}% completed. Keep the momentum going!")
+        elif completion_rate >= 30:
+            st.warning(f"⚠️ **Needs Attention**: Only {completion_rate:.1f}% completed. Consider reviewing pending requests.")
+        else:
+            st.error(f"🚨 **Action Required**: {completion_rate:.1f}% completion rate is low. Immediate attention needed for pending items.")
 
         rcol_f, rcol_s = st.columns(2)
         with rcol_f:
@@ -471,6 +603,74 @@ with req_tab:
                 ] if c in f_reqs.columns
             ]
             st.dataframe(f_reqs[display_cols_r], use_container_width=True, hide_index=True)
+        
+        # Priority and workload insights
+        st.markdown("---")
+        st.markdown("### 📊 Workload Analysis")
+        
+        if "priority" in f_reqs.columns and not f_reqs.empty:
+            priority_counts = f_reqs["priority"].value_counts()
+            urgent_count = priority_counts.get("urgent", 0)
+            high_count = priority_counts.get("high", 0)
+            
+            col_p1, col_p2 = st.columns(2)
+            with col_p1:
+                st.markdown("**⚡ Priority Distribution**")
+                if urgent_count > 0:
+                    st.warning(f"🚨 **{urgent_count}** urgent requests require immediate attention")
+                if high_count > 0:
+                    st.info(f"⚠️ **{high_count}** high-priority requests in queue")
+                if urgent_count == 0 and high_count == 0:
+                    st.success("✅ No urgent or high-priority requests pending")
+            
+            with col_p2:
+                st.markdown("**👥 Role Distribution**")
+                if "assigned_to_role" in f_reqs.columns:
+                    role_counts = f_reqs["assigned_to_role"].value_counts()
+                    busiest_role = role_counts.index[0] if len(role_counts) > 0 else "N/A"
+                    busiest_count = role_counts.iloc[0] if len(role_counts) > 0 else 0
+                    st.caption(f"Most assigned: **{busiest_role}** ({busiest_count} requests)")
+                    
+                    # Workload balance check
+                    if len(role_counts) > 1:
+                        max_load = role_counts.max()
+                        min_load = role_counts.min()
+                        if max_load > min_load * 3:
+                            st.warning("⚖️ Workload imbalance detected - consider redistributing tasks")
+        
+        # Actionable Summary for Requests
+        st.markdown("---")
+        st.markdown("### 💡 Workflow Insights & Next Steps")
+        
+        col_r1, col_r2 = st.columns(2)
+        with col_r1:
+            st.markdown("**📈 Current Status:**")
+            req_insights = []
+            if completion_rate >= 70:
+                req_insights.append("✓ Excellent completion rate")
+            if pending_reqs > 0:
+                req_insights.append(f"⏳ {pending_reqs} requests awaiting action")
+            if in_progress_reqs > 0:
+                req_insights.append(f"🔄 {in_progress_reqs} requests in progress")
+            
+            for insight in req_insights:
+                st.markdown(f"- {insight}")
+        
+        with col_r2:
+            st.markdown("**🎯 Recommended Actions:**")
+            req_actions = []
+            if pending_reqs > completed_reqs:
+                req_actions.append("Prioritize clearing pending backlog")
+            if urgent_count > 0:
+                req_actions.append(f"Address {urgent_count} urgent requests first")
+            if completion_rate < 50:
+                req_actions.append("Review workflow bottlenecks and resource allocation")
+            
+            if not req_actions:
+                req_actions.append("Workflow is healthy! Maintain current pace")
+            
+            for action in req_actions:
+                st.markdown(f"- {action}")
     else:
         st.info("No document requests found or failed to load requests.")
  
