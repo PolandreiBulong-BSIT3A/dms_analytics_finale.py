@@ -120,7 +120,7 @@ with st.sidebar:
     
     page = st.radio(
         "Navigation",
-        ["📈 Dashboard", "📄 Documents Analytics"],
+        ["📈 Dashboard", "📄 Documents Analytics", "📋 Documents Table"],
         label_visibility="collapsed"
     )
     
@@ -145,6 +145,40 @@ with st.sidebar:
     selected_department = st.selectbox(
         "Select Department",
         options=department_options,
+        index=0,
+        label_visibility="collapsed"
+    )
+    
+    st.markdown("---")
+    st.markdown("### 📁 Folder Filter")
+    
+    # Folder filter (will be populated from data)
+    selected_folder = st.selectbox(
+        "Select Folder",
+        options=["All Folders"],
+        index=0,
+        label_visibility="collapsed"
+    )
+    
+    st.markdown("---")
+    st.markdown("### 📄 Document Type Filter")
+    
+    # Document type filter
+    selected_doc_type = st.selectbox(
+        "Select Document Type",
+        options=["All Types"],
+        index=0,
+        label_visibility="collapsed"
+    )
+    
+    st.markdown("---")
+    st.markdown("### 📊 Status Filter")
+    
+    # Status filter
+    status_options = ["All Status", "Active", "Deleted"]
+    selected_status = st.selectbox(
+        "Select Status",
+        options=status_options,
         index=0,
         label_visibility="collapsed"
     )
@@ -245,6 +279,19 @@ if selected_year != "All Years":
             reqs_df_full["created_at"].dt.year == selected_year
         ]
 
+# Populate dynamic filter options from data
+if not docs_df_full.empty:
+    # Get unique folders
+    folder_options = ["All Folders"] + sorted(docs_df_full["folder_name"].dropna().unique().tolist())
+    # Get unique document types
+    doc_type_options = ["All Types"] + sorted(docs_df_full["doc_type_name"].dropna().unique().tolist())
+else:
+    folder_options = ["All Folders"]
+    doc_type_options = ["All Types"]
+
+# Update sidebar filters with dynamic options (need to rerun sidebar logic)
+# This is a workaround - filters will update on next interaction
+
 # Filter by department
 if selected_department != "All Departments":
     if not docs_df_full.empty and "department_codes" in docs_df_full.columns:
@@ -260,6 +307,22 @@ if selected_department != "All Departments":
                 (docs_df_full["department_codes"].notna()) &
                 (docs_df_full["department_codes"].str.contains(selected_department, na=False))
             ]
+
+# Filter by folder
+if selected_folder != "All Folders":
+    if not docs_df_full.empty and "folder_name" in docs_df_full.columns:
+        docs_df_full = docs_df_full[docs_df_full["folder_name"] == selected_folder]
+
+# Filter by document type
+if selected_doc_type != "All Types":
+    if not docs_df_full.empty and "doc_type_name" in docs_df_full.columns:
+        docs_df_full = docs_df_full[docs_df_full["doc_type_name"] == selected_doc_type]
+
+# Filter by status
+if selected_status != "All Status":
+    if not docs_df_full.empty and "status" in docs_df_full.columns:
+        status_value = selected_status.lower()
+        docs_df_full = docs_df_full[docs_df_full["status"] == status_value]
 
 # Page routing based on sidebar selection
 if page == "📈 Dashboard":
@@ -500,5 +563,69 @@ elif page == "📄 Documents Analytics":
             st.plotly_chart(fig, use_container_width=True)
     else:
         st.info("No documents found or failed to load documents.")
- 
+
+elif page == "📋 Documents Table":
+    # Header
+    year_display = selected_year if selected_year != "All Years" else "All Time"
+    dept_display = selected_department if selected_department != "All Departments" else "All Departments"
+    st.markdown(f"### 📋 Documents Table - {year_display} - {dept_display}")
+    st.markdown("*Complete list of documents with all details in tabular format.*")
+    
+    docs_df = docs_df_full.copy()
+    
+    if not docs_df.empty:
+        # Show filter summary
+        st.markdown(f"**Showing {len(docs_df):,} documents**")
+        
+        # Add search functionality
+        search_term = st.text_input("🔍 Search documents (title, reference, from, to)", "")
+        
+        if search_term:
+            search_cols = ["title", "reference", "from_field", "to_field"]
+            mask = docs_df[search_cols].apply(
+                lambda x: x.astype(str).str.contains(search_term, case=False, na=False)
+            ).any(axis=1)
+            docs_df = docs_df[mask]
+            st.caption(f"Found {len(docs_df):,} matching documents")
+        
+        # Select columns to display
+        display_cols = [
+            "doc_id", "reference", "title", "doc_type_name", "folder_name",
+            "from_field", "to_field", "date_received", "status", 
+            "department_codes", "available_copy", "created_at", "created_by_name"
+        ]
+        
+        # Filter only existing columns
+        display_cols = [col for col in display_cols if col in docs_df.columns]
+        
+        # Sort options
+        st.markdown("---")
+        col_sort1, col_sort2 = st.columns([3, 1])
+        with col_sort1:
+            sort_by = st.selectbox("Sort by", display_cols, index=display_cols.index("date_received") if "date_received" in display_cols else 0)
+        with col_sort2:
+            sort_order = st.radio("Order", ["Descending", "Ascending"], horizontal=True)
+        
+        # Apply sorting
+        docs_df = docs_df.sort_values(by=sort_by, ascending=(sort_order == "Ascending"))
+        
+        # Display table
+        st.markdown("---")
+        st.dataframe(
+            docs_df[display_cols],
+            use_container_width=True,
+            hide_index=True,
+            height=600
+        )
+        
+        # Download button
+        csv = docs_df[display_cols].to_csv(index=False)
+        st.download_button(
+            label="📥 Download as CSV",
+            data=csv,
+            file_name=f"documents_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+            mime="text/csv"
+        )
+    else:
+        st.info("No documents found matching the selected filters.")
 
