@@ -75,119 +75,17 @@ def reset_keys(keys: list[str]):
 # ---------------
 # App UI
 # ---------------
-st.set_page_config(page_title="ISPSC Tagudin DMS Analytics", page_icon="📊", layout="wide")
+st.set_page_config(page_title="ISPSC Tagudin DMS Analytics", layout="wide")
+st.title("ISPSC Tagudin DMS Analytics Dashboard")
+st.caption("Documents Analytics")
 
-# Global styles (modern light theme)
-st.markdown(
-    """
-    <style>
-      @import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;600;700&display=swap');
-      :root {
-        --primary: #4F46E5; /* indigo-600 */
-        --bg: #F7F8FA;
-        --panel: #FFFFFF;
-        --muted: #6B7280;
-        --shadow: 0 8px 20px rgba(0,0,0,0.06);
-        --radius: 14px;
-      }
-      .stApp {
-        background: var(--bg);
-        font-family: 'Source Sans 3', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
-      }
-      .block-container {
-        padding-top: 1.2rem;
-        padding-bottom: 3rem;
-        max-width: 1300px;
-      }
-      /* Sidebar */
-      section[data-testid="stSidebar"] {
-        background: #ffffff;
-        border-right: 1px solid #EEF0F4;
-      }
-      .sidebar-title { font-weight: 700; font-size: 1.1rem; margin-bottom: .25rem; }
-      .sidebar-muted { color: var(--muted); font-size: .9rem; margin-bottom: .75rem; }
-      .sidebar-card { background:#fff; border:1px solid #EEF0F4; border-radius:12px; padding:.75rem; }
-      /* Header */
-      .app-header {
-        background: var(--panel);
-        border: 1px solid #EEF0F4;
-        border-radius: var(--radius);
-        box-shadow: var(--shadow);
-        padding: 1.1rem 1.2rem;
-        margin-bottom: 1rem;
-      }
-      .app-title {
-        font-size: 1.5rem;
-        font-weight: 700;
-        margin: 0;
-      }
-      .app-subtitle {
-        color: var(--muted);
-        margin-top: .25rem;
-      }
-      /* Tabs */
-      [data-baseweb="tab-list"]{ gap: .25rem; }
-      [data-baseweb="tab"]{ background: transparent; border-radius: 10px; }
-      [data-baseweb="tab"]:hover{ background: #F1F5F9; }
-      /* Cards/expanders */
-      .stExpander, .stDataFrame, .element-container:has(.metric-container) {
-        border-radius: var(--radius) !important;
-        box-shadow: var(--shadow);
-        overflow: hidden;
-        background: var(--panel);
-        border: 1px solid #EEF0F4;
-      }
-      .card { background: var(--panel); border:1px solid #EEF0F4; border-radius: var(--radius); box-shadow: var(--shadow); }
-      .card-body { padding: 1rem 1.1rem; }
-      .info-card { background:#F1F5FF; border:1px solid #DDE3FF; color:#1F2A6B; border-radius:12px; padding:.85rem 1rem; }
-      .info-card .emoji { margin-right:.5rem; }
-      /* Chart container with rounded edges */
-      .chart-card { padding:.5rem; }
-      .chart-card .js-plotly-plot, .chart-card canvas { border-radius: 16px !important; }
-      /* Button variants */
-      .btn-row { display:flex; gap:.5rem; flex-wrap:wrap; }
-      .btn { border-radius: 10px; padding:.45rem .9rem; font-weight:600; border:1px solid transparent; cursor:pointer; transition:.15s ease all; }
-      .btn-primary { background: var(--primary); color:#fff; border-color: var(--primary); }
-      .btn-primary:hover { filter: brightness(0.95); }
-      .btn-outline { background:#fff; color: var(--primary); border-color: var(--primary); }
-      .btn-outline:hover { background:#EEF2FF; }
-      .btn-neutral { background:#F8FAFC; color:#111827; border-color:#E5E7EB; }
-      .btn-neutral:hover { background:#EFF4F8; }
-      /* Code snippet with copy */
-      .code-block { position:relative; }
-      .copy-btn { position:absolute; right:.5rem; top:.5rem; border:1px solid #E5E7EB; background:#fff; border-radius:8px; padding:.25rem .5rem; font-size:.85rem; cursor:pointer; }
-      .copy-btn:hover { background:#F3F4F6; }
-      /* Buttons */
-      .stButton>button {
-        border-radius: 10px;
-        border: 1px solid #E5E7EB;
-        padding: .6rem .9rem;
-        font-weight: 600;
-      }
-      .stButton>button[kind="primary"] {
-        background: var(--primary);
-        border-color: var(--primary);
-        color: #fff;
-      }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
-# Header with right-aligned refresh
-header = st.container()
-with header:
-    st.markdown('<div class="app-header">', unsafe_allow_html=True)
-    hcol1, hsp, hcol2 = st.columns([0.8, 0.05, 0.15])
-    with hcol1:
-        st.markdown('<div class="app-title">ISPSC Tagudin DMS Analytics</div>', unsafe_allow_html=True)
-        st.markdown('<div class="app-subtitle">Modern documents analytics dashboard</div>', unsafe_allow_html=True)
-    with hcol2:
-        if st.button("Refresh Data", type="primary", use_container_width=True):
-            st.cache_data.clear()
-            st.rerun()
-        st.caption(f"Last refreshed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    st.markdown('</div>', unsafe_allow_html=True)
+# Refresh control
+hdr1, hdr2 = st.columns([0.2, 1])
+with hdr1:
+    if st.button("Refresh Data", type="primary", use_container_width=True):
+        st.cache_data.clear()
+        st.rerun()
+st.caption(f"Last refreshed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
 # Build DB connection from environment variables (no sidebar controls)
 # Defaults set to provided remote SQL details; prefer st.secrets at runtime
@@ -252,91 +150,18 @@ data = fetch_many(engine_uri, {"docs": docs_q, "reqs": requests_q})
 
 # Global chart style
 PALETTE = [
-    "#4F46E5", "#F59E0B", "#10B981", "#EC4899", "#0EA5E9",
-    "#22D3EE", "#A78BFA", "#84CC16", "#F97316", "#14B8A6"
+    "#636EFA", "#EF553B", "#00CC96", "#AB63FA", "#FFA15A",
+    "#19D3F3", "#FF6692", "#B6E880", "#FF97FF", "#FECB52"
 ]
-px.defaults.template = "plotly_white"
+px.defaults.template = "plotly_dark"
 
-# Sidebar navigation similar to a design system menu
-st.sidebar.markdown("<div class='sidebar-title'>🔖 Overview</div>", unsafe_allow_html=True)
-st.sidebar.markdown(
-    """
-    <div class='sidebar-card'>
-      <div>• Hello World</div>
-      <div>• North Star</div>
-      <div class='sidebar-title' style='margin-top:.6rem;'>📊 Metrics</div>
-      <div class='sidebar-muted'>Core Metrics, Dependencies, Statuses over time…</div>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-
-nav = st.sidebar.radio(
-    "Navigation",
-    ["Overview", "Documents", "Requests"],
-    index=0,
-    label_visibility="collapsed",
-    key="nav"
-)
+# Minimal layout: two tabs for Documents and Requests
+docs_tab, req_tab = st.tabs(["Documents", "Requests"])
 
 # -----------------------------
 # Documents
 # -----------------------------
-if nav == "Overview":
-    st.caption("Overview")
-    docs_df = data["docs"].copy()
-    reqs_df = data["reqs"].copy()
-    total_docs = len(docs_df)
-    total_reqs = len(reqs_df)
-    completed = (reqs_df.get("status", pd.Series(dtype=str)) == "completed").sum() if not reqs_df.empty else 0
-    pending = (reqs_df.get("status", pd.Series(dtype=str)) == "pending").sum() if not reqs_df.empty else 0
-
-    k1,k2,k3,k4 = st.columns(4)
-    with k1: st.metric("Total Documents", f"{total_docs:,}")
-    with k2: st.metric("Total Requests", f"{total_reqs:,}")
-    with k3: st.metric("Pending Requests", f"{pending:,}")
-    with k4: st.metric("Completed Requests", f"{completed:,}")
-
-    # Info message card
-    st.markdown(
-        """
-        <div class="info-card">🔔 <strong>Info:</strong> Use the sidebar to navigate between Overview, Documents, and Requests. Filters are available per page, and you can reset or select all with one click.</div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    # Area chart like the design sample
-    st.caption("Documents over Time")
-    if not docs_df.empty and "date_received" in docs_df.columns:
-        tmp = docs_df.dropna(subset=["date_received"]).copy()
-        tmp["date"] = pd.to_datetime(tmp["date_received"]).dt.to_period("M").dt.to_timestamp()
-        ts = tmp.groupby("date").size().reset_index(name="Count")
-        fig = px.area(ts, x="date", y="Count", markers=True, color_discrete_sequence=["#EF4444"])  # red accent
-        st.markdown('<div class="card chart-card">', unsafe_allow_html=True)
-        st.plotly_chart(fig, use_container_width=True)
-        st.markdown('</div>', unsafe_allow_html=True)
-    else:
-        st.info("No date data available for overview chart.")
-
-    # Button variants row
-    st.markdown(
-        """
-        <div class="btn-row">
-          <button class="btn btn-primary">Primary</button>
-          <button class="btn btn-outline">Outline</button>
-          <button class="btn btn-neutral">Neutral</button>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    # Code snippet with copy button
-    code_sample = "import streamlit as st\n\nst.title('Hello, Streamlit!')\nst.write('This is a sample snippet.')"
-    st.markdown('<div class="card code-block"><button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById(\'code-sample\').innerText);">Copy</button>', unsafe_allow_html=True)
-    st.code(code_sample, language="python", line_numbers=False)
-    st.markdown('<div id="code-sample" style="display:none;">'+code_sample.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;")+'</div></div>', unsafe_allow_html=True)
-
-elif nav == "Documents":
+with docs_tab:
     st.caption("Documents")
     docs_df = data["docs"].copy()
     if not docs_df.empty:
@@ -443,24 +268,25 @@ elif nav == "Documents":
         # Sort for documents (from UI)
         f_docs = apply_sort(f_docs, sort_col_d, asc_d)
 
-        # Display with friendly columns: Folder Name and Doc Type
-        display_cols = [
-            c for c in [
-                "doc_id",
-                "title",
-                "doc_type_name",
-                "folder_name",
-                "status",
-                "visibility",
-                "available_copy",
-                "reference",
-                "date_received",
-                "created_at",
-                "updated_at",
-                "created_by_name",
-            ] if c in f_docs.columns
-        ]
-        st.dataframe(f_docs[display_cols], use_container_width=True, hide_index=True)
+        # Display with friendly columns: Folder Name and Doc Type (hidden by default)
+        with st.expander("Show data table", expanded=False):
+            display_cols = [
+                c for c in [
+                    "doc_id",
+                    "title",
+                    "doc_type_name",
+                    "folder_name",
+                    "status",
+                    "visibility",
+                    "available_copy",
+                    "reference",
+                    "date_received",
+                    "created_at",
+                    "updated_at",
+                    "created_by_name",
+                ] if c in f_docs.columns
+            ]
+            st.dataframe(f_docs[display_cols], use_container_width=True, hide_index=True)
 
         with st.expander("Chart toggles", expanded=False):
             show_d_status = st.checkbox("Documents by Status", value=True, key="d_status")
@@ -546,7 +372,7 @@ elif nav == "Documents":
 # -----------------------------
 # Requests
 # -----------------------------
-elif nav == "Requests":
+with req_tab:
     st.caption("Document Requests")
     reqs_df = data["reqs"].copy()
     if not reqs_df.empty:
@@ -626,24 +452,25 @@ elif nav == "Requests":
                     rmask = (rmask | f_reqs[c].astype(str).str.lower().str.contains(q2, na=False)) if isinstance(rmask, pd.Series) else f_reqs[c].astype(str).str.lower().str.contains(q2, na=False)
                 f_reqs = f_reqs[rmask]
 
-        # Sort and table
+        # Sort and table (hidden by default)
         f_reqs = apply_sort(f_reqs, r_sort_col, r_sort_asc)
-        display_cols_r = [
-            c for c in [
-                "document_action_id",
-                "doc_id",
-                "document_title",
-                "action_name",
-                "assigned_to_role",
-                "assigned_to_department_id",
-                "status",
-                "priority",
-                "due_date",
-                "created_at",
-                "updated_at",
-            ] if c in f_reqs.columns
-        ]
-        st.dataframe(f_reqs[display_cols_r], use_container_width=True, hide_index=True)
+        with st.expander("Show data table", expanded=False):
+            display_cols_r = [
+                c for c in [
+                    "document_action_id",
+                    "doc_id",
+                    "document_title",
+                    "action_name",
+                    "assigned_to_role",
+                    "assigned_to_department_id",
+                    "status",
+                    "priority",
+                    "due_date",
+                    "created_at",
+                    "updated_at",
+                ] if c in f_reqs.columns
+            ]
+            st.dataframe(f_reqs[display_cols_r], use_container_width=True, hide_index=True)
     else:
         st.info("No document requests found or failed to load requests.")
  
