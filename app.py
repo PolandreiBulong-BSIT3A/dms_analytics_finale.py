@@ -320,7 +320,7 @@ PALETTE = [
     "#4e79a7", "#f28e2b", "#59a14f", "#e15759", "#b07aa1",
     "#ff9da7", "#9c755f", "#bab0ab", "#76b7b2", "#edc948"
 ]
-px.defaults.template = "plotly_dark"
+px.defaults.template = "plotly_white"
 px.defaults.color_discrete_sequence = PALETTE
 
 # Apply year filter to data
@@ -485,9 +485,9 @@ if page == "Dashboard":
         if not docs_df.empty and "status" in docs_df.columns:
             status_counts = docs_df["status"].value_counts().reset_index()
             status_counts.columns = ["Status", "Count"]
-            fig_donut = px.pie(status_counts, names="Status", values="Count", hole=0.5)
-            fig_donut.update_layout(height=300, margin=dict(l=0, r=0, t=20, b=0), showlegend=True)
-            st.plotly_chart(fig_donut, use_container_width=True)
+            fig_status_bar = px.bar(status_counts, x="Count", y="Status", orientation="h", color="Status", color_discrete_sequence=PALETTE)
+            fig_status_bar.update_layout(height=300, margin=dict(l=0, r=0, t=20, b=0), showlegend=False)
+            st.plotly_chart(fig_status_bar, use_container_width=True)
         else:
             st.info("No status data available")
     
@@ -526,6 +526,41 @@ if page == "Dashboard":
         st.plotly_chart(fig_dept, use_container_width=True)
     else:
         st.info("No department data available")
+
+    # Contributors section
+    st.markdown("---")
+    st.markdown("**Top Contributors**")
+    if not docs_df.empty and "created_by_name" in docs_df.columns:
+        contrib_counts = (
+            docs_df["created_by_name"].fillna("(Unknown)").value_counts().head(10).reset_index()
+        )
+        contrib_counts.columns = ["Contributor", "Documents"]
+        fig_contrib = px.bar(
+            contrib_counts,
+            x="Documents",
+            y="Contributor",
+            orientation="h",
+            color_discrete_sequence=PALETTE,
+        )
+        fig_contrib.update_layout(height=320, margin=dict(l=0, r=0, t=20, b=0), yaxis={'categoryorder':'total ascending'})
+        st.plotly_chart(fig_contrib, use_container_width=True)
+    else:
+        st.info("No contributor data available")
+
+    st.markdown("---")
+    st.markdown("**Recent Documents**")
+    if not docs_df.empty:
+        # Choose best available date for recency
+        date_col = "date_received" if "date_received" in docs_df.columns else ("created_at" if "created_at" in docs_df.columns else None)
+        rec_df = docs_df.copy()
+        if date_col:
+            rec_df = rec_df.dropna(subset=[date_col])
+            rec_df = rec_df.sort_values(date_col, ascending=False)
+        cols = [c for c in ["doc_id", "title", "doc_type_name", "status", "created_by_name", "date_received", "created_at"] if c in rec_df.columns]
+        if cols:
+            st.dataframe(rec_df[cols].head(15), use_container_width=True, hide_index=True)
+        else:
+            st.info("No displayable columns for recent documents")
 
 elif page == "Documents Analytics":
     # Header
@@ -577,8 +612,8 @@ elif page == "Documents Analytics":
             top_status = s_counts.iloc[0]["status"] if not s_counts.empty else "N/A"
             top_count = s_counts.iloc[0]["Count"] if not s_counts.empty else 0
             st.caption(f"Most common: {top_status} ({top_count} documents)")
-            fig = px.pie(s_counts, names="status", values="Count", hole=0.4, color_discrete_sequence=PALETTE)
-            fig.update_layout(height=350, margin=dict(l=0, r=0, t=30, b=0))
+            fig = px.bar(s_counts, x="Count", y="status", orientation="h", color="status", color_discrete_sequence=PALETTE)
+            fig.update_layout(height=350, margin=dict(l=0, r=0, t=30, b=0), showlegend=False)
             st.plotly_chart(fig, use_container_width=True)
         
         with c2:
@@ -626,8 +661,8 @@ elif page == "Documents Analytics":
                 dt_counts.columns = ["doc_type_name", "Count"]
                 type_count = len(dt_counts)
                 st.caption(f"{type_count} document types")
-                fig = px.pie(dt_counts, names="doc_type_name", values="Count", hole=0.4, color_discrete_sequence=PALETTE)
-                fig.update_layout(height=350, margin=dict(l=0, r=0, t=30, b=0))
+                fig = px.bar(dt_counts, x="Count", y="doc_type_name", orientation="h", color="doc_type_name", color_discrete_sequence=PALETTE)
+                fig.update_layout(height=350, margin=dict(l=0, r=0, t=30, b=0), showlegend=False)
                 st.plotly_chart(fig, use_container_width=True)
         
         # Row 3: Department Assignment
