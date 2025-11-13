@@ -483,9 +483,28 @@ if page == "Dashboard":
     with chart_col2:
         st.markdown("**Document Status Distribution**")
         if not docs_df.empty and "status" in docs_df.columns:
-            status_counts = docs_df["status"].value_counts().reset_index()
-            status_counts.columns = ["Status", "Count"]
-            fig_status_bar = px.bar(status_counts, x="Count", y="Status", orientation="h", color="Status", color_discrete_sequence=PALETTE)
+            # Compute Deleted via explicit 'deleted' flag if available, else via status=='deleted'
+            if "deleted" in docs_df.columns:
+                deleted_mask = docs_df["deleted"].fillna(0).astype(int) == 1
+            else:
+                deleted_mask = docs_df["status"].astype(str).str.lower() == "deleted"
+
+            deleted_count = int(deleted_mask.sum())
+            active_count = int(len(docs_df) - deleted_count)
+            status_counts = pd.DataFrame({
+                "Status": ["Active", "Deleted"],
+                "Count": [active_count, deleted_count],
+            })
+
+            fig_status_bar = px.bar(
+                status_counts,
+                x="Count",
+                y="Status",
+                orientation="h",
+                color="Status",
+                color_discrete_map={"Active": "#22c55e", "Deleted": "#ef4444"},
+            )
+            fig_status_bar.update_traces(texttemplate='%{x}', textposition='outside', hovertemplate='<b>%{y}</b><br>Documents: %{x}<extra></extra>', marker_line_color='#111', marker_line_width=0.5)
             fig_status_bar.update_layout(height=300, margin=dict(l=0, r=0, t=20, b=0), showlegend=False)
             st.plotly_chart(fig_status_bar, use_container_width=True)
         else:
