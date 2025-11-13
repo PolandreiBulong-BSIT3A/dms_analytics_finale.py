@@ -465,72 +465,88 @@ if page == "Dashboard":
     
     st.markdown("---")
     
-    # Alerts section
-    st.markdown("---")
-    st.markdown("**Alerts**")
-    if not docs_df.empty:
-        alerts = []
-        # Pending aging > 14 days
-        if "status" in docs_df.columns and "created_at" in docs_df.columns:
-            pend = docs_df[(docs_df["status"] == "pending") & docs_df["created_at"].notna()].copy()
-            if not pend.empty:
-                pend["age_days"] = (pd.Timestamp.now() - pd.to_datetime(pend["created_at"])) .dt.days
-                aged = (pend["age_days"] > 14).sum()
-                if aged > 0:
-                    alerts.append(f"{aged} pending documents older than 14 days")
-        # Deleted spike last 7 days vs previous 7
-        if "status" in docs_df.columns and "created_at" in docs_df.columns:
-            now = pd.Timestamp.now()
-            last7 = docs_df[(docs_df["created_at"] >= now - pd.Timedelta(days=7)) & (docs_df["status"] == "deleted")]
-            prev7 = docs_df[(docs_df["created_at"] < now - pd.Timedelta(days=7)) & (docs_df["created_at"] >= now - pd.Timedelta(days=14)) & (docs_df["status"] == "deleted")]
-            if len(prev7) > 0 and len(last7) > len(prev7) * 1.5:
-                alerts.append("Deleted documents spiked in the last 7 days")
-        # Missing metadata
-        missing_title = (docs_df["title"].isna()).sum() if "title" in docs_df.columns else 0
-        missing_type = (docs_df["doc_type_name"].isna()).sum() if "doc_type_name" in docs_df.columns else 0
-        if missing_title:
-            alerts.append(f"{missing_title} documents missing title")
-        if missing_type:
-            alerts.append(f"{missing_type} documents missing type")
-        
-        if alerts:
-            for a in alerts:
-                st.warning(a)
+    # Second row - Charts (line chart + donut chart like the image)
+    chart_col1, chart_col2 = st.columns([1.5, 1])
+    
+    with chart_col1:
+        st.markdown("**Document Intake Trend**")
+        if not docs_df.empty and "date_received" in docs_df.columns:
+            ts_data = docs_df.dropna(subset=["date_received"]).copy()
+            ts_data["date"] = pd.to_datetime(ts_data["date_received"]).dt.to_period("W").dt.to_timestamp()
+            ts = ts_data.groupby("date").size().reset_index(name="Documents")
+            fig_line = px.line(ts, x="date", y="Documents", markers=True)
+            fig_line.update_layout(height=300, margin=dict(l=0, r=0, t=20, b=0))
+            st.plotly_chart(fig_line, use_container_width=True)
         else:
-            st.success("No alerts to show")
-    else:
-        st.info("No data for alerts")
-
-    # Quick Actions
+            st.info("No date data available")
+    
+    with chart_col2:
+        st.markdown("**Document Status Distribution**")
+        if not docs_df.empty and "status" in docs_df.columns:
+            status_counts = docs_df["status"].value_counts().reset_index()
+            status_counts.columns = ["Status", "Count"]
+            fig_status_bar = px.bar(status_counts, x="Count", y="Status", orientation="h", color="Status", color_discrete_sequence=PALETTE)
+            fig_status_bar.update_layout(height=300, margin=dict(l=0, r=0, t=20, b=0), showlegend=False)
+            st.plotly_chart(fig_status_bar, use_container_width=True)
+        else:
+            st.info("No status data available")
+    
     st.markdown("---")
-    st.markdown("**Quick Actions**")
-    qa1, qa2, qa3 = st.columns(3)
-    with qa1:
-        st.button("➕ Add Document")
-    with qa2:
-        st.button("👤 Invite Contributor")
-    with qa3:
-        st.button("📤 Export Snapshot")
-
-    # Single trend: last 30 days intake (bar)
+    
+    # Third row - Department Assignment Chart
     st.markdown("---")
-    st.markdown("**Intake - Last 30 Days**")
-    if not docs_df.empty and "date_received" in docs_df.columns:
-        tr = docs_df.dropna(subset=["date_received"]).copy()
-        cutoff = pd.Timestamp.now().normalize() - pd.Timedelta(days=29)
-        tr["date"] = pd.to_datetime(tr["date_received"]).dt.date
-        tr = tr[tr["date"] >= cutoff.date()]
-        by_day = pd.Series(1, index=pd.to_datetime(tr["date"]))
-        daily = by_day.groupby(level=0).size().reset_index(name="Documents")
-        daily.rename(columns={"index": "date"}, inplace=True)
-        fig_daily_bar = px.bar(daily, x="date", y="Documents", color_discrete_sequence=PALETTE)
-        fig_daily_bar.update_traces(texttemplate='%{y}', textposition='outside', hovertemplate='<b>%{x|%b %d, %Y}</b><br>Documents: %{y}<extra></extra>', marker_line_color='#111', marker_line_width=0.5)
-        fig_daily_bar.update_layout(height=280, margin=dict(l=0, r=0, t=20, b=0))
-        st.plotly_chart(fig_daily_bar, use_container_width=True)
+    st.markdown("**Document Assignment by Department**")
+    
+    if not docs_df.empty and "visibility" in docs_df.columns:
+        # Map visibility and department_codes to specific departments
+        def map_to_department(row):
+            vis = row.get("visibility", "")
+            dept_codes = row.get("department_codes", "")
+            
+            if vis == "ALL":
+                return "ALL"
+            elif vis == "DEPARTMENT" and pd.notna(dept_codes) and dept_codes:
+                # Return the actual department code(s)
+                return dept_codes
+            elif vis in ["SPECIFIC_USERS", "SPECIFIC_ROLES", "ROLE_DEPARTMENT"]:
+                return "Others (User Specific)"
+            else:
+                return "Unassigned"
+        
+        docs_df["department"] = docs_df.apply(map_to_department, axis=1)
+        dept_counts = docs_df["department"].value_counts().reset_index()
+        dept_counts.columns = ["Department", "Count"]
+        
+        # Add caption
+        all_count = dept_counts[dept_counts["Department"] == "ALL"]["Count"].sum() if "ALL" in dept_counts["Department"].values else 0
+        st.caption(f"{all_count} documents accessible to all departments")
+        
+        fig_dept = px.bar(dept_counts, x="Department", y="Count", color_discrete_sequence=PALETTE)
+        fig_dept.update_layout(height=300, margin=dict(l=0, r=0, t=20, b=0))
+        st.plotly_chart(fig_dept, use_container_width=True)
     else:
-        st.info("No intake data available")
+        st.info("No department data available")
 
-    # Activity Feed
+    # Contributors section
+    st.markdown("---")
+    st.markdown("**Top Contributors**")
+    if not docs_df.empty and "created_by_name" in docs_df.columns:
+        contrib_counts = (
+            docs_df["created_by_name"].fillna("(Unknown)").value_counts().head(10).reset_index()
+        )
+        contrib_counts.columns = ["Contributor", "Documents"]
+        fig_contrib = px.bar(
+            contrib_counts,
+            x="Documents",
+            y="Contributor",
+            orientation="h",
+            color_discrete_sequence=PALETTE,
+        )
+        fig_contrib.update_layout(height=320, margin=dict(l=0, r=0, t=20, b=0), yaxis={'categoryorder':'total ascending'})
+        st.plotly_chart(fig_contrib, use_container_width=True)
+    else:
+        st.info("No contributor data available")
+
     st.markdown("---")
     st.markdown("**Recent Documents**")
     if not docs_df.empty:
@@ -587,7 +603,43 @@ elif page == "Documents Analytics":
         # Charts only - no tables or filters
         f_docs = docs_df.copy()
         
-        # Row: Folder & Doc Type
+        # Row 1: Status & Timeline
+        c1, c2 = st.columns(2)
+        with c1:
+            st.markdown("**Status Distribution**")
+            s_counts = f_docs["status"].value_counts().reset_index()
+            s_counts.columns = ["status", "Count"]
+            top_status = s_counts.iloc[0]["status"] if not s_counts.empty else "N/A"
+            top_count = s_counts.iloc[0]["Count"] if not s_counts.empty else 0
+            st.caption(f"Most common: {top_status} ({top_count} documents)")
+            fig = px.bar(s_counts, x="Count", y="status", orientation="h", color="status", color_discrete_sequence=PALETTE)
+            fig.update_layout(height=350, margin=dict(l=0, r=0, t=30, b=0), showlegend=False)
+            st.plotly_chart(fig, use_container_width=True)
+        
+        with c2:
+            st.markdown("**Document Intake Over Time**")
+            if "date_received" in f_docs.columns and not f_docs.empty:
+                ts_data = f_docs.dropna(subset=["date_received"]).copy()
+                ts_data["month"] = pd.to_datetime(ts_data["date_received"]).dt.to_period("M").dt.to_timestamp()
+                ts = ts_data.groupby("month").size().reset_index(name="Documents")
+                
+                if len(ts) >= 2:
+                    recent_avg = ts.tail(3)["Documents"].mean()
+                    older_avg = ts.head(3)["Documents"].mean()
+                    if recent_avg > older_avg * 1.2:
+                        st.caption("Trend: Intake is increasing")
+                    elif recent_avg < older_avg * 0.8:
+                        st.caption("Trend: Intake is decreasing")
+                    else:
+                        st.caption("Trend: Intake remains stable")
+                
+                fig = px.line(ts, x="month", y="Documents", markers=True)
+                fig.update_layout(height=350, margin=dict(l=0, r=0, t=30, b=0))
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("No date data available")
+
+        # Row 2: Folder & Doc Type
         st.markdown("---")
         c3, c4 = st.columns(2)
         
@@ -599,7 +651,6 @@ elif page == "Documents Analytics":
                 total_folders = f_docs["folder_name"].nunique()
                 st.caption(f"{total_folders} folders in use")
                 fig = px.bar(f_counts, x="Count", y="folder_name", orientation="h", color_discrete_sequence=PALETTE)
-                fig.update_traces(texttemplate='%{x}', textposition='outside', hovertemplate='<b>%{y}</b><br>Documents: %{x}<extra></extra>', marker_line_color='#111', marker_line_width=0.5)
                 fig.update_layout(height=350, margin=dict(l=0, r=0, t=30, b=0), yaxis={'categoryorder':'total ascending'})
                 st.plotly_chart(fig, use_container_width=True)
         
@@ -611,11 +662,39 @@ elif page == "Documents Analytics":
                 type_count = len(dt_counts)
                 st.caption(f"{type_count} document types")
                 fig = px.bar(dt_counts, x="Count", y="doc_type_name", orientation="h", color="doc_type_name", color_discrete_sequence=PALETTE)
-                fig.update_traces(texttemplate='%{x}', textposition='outside', hovertemplate='<b>%{y}</b><br>Documents: %{x}<extra></extra>', marker_line_color='#111', marker_line_width=0.5)
                 fig.update_layout(height=350, margin=dict(l=0, r=0, t=30, b=0), showlegend=False)
                 st.plotly_chart(fig, use_container_width=True)
         
-        # End analytics for Documents Analytics page (kept focused on structure/type)
+        # Row 3: Department Assignment
+        if "visibility" in f_docs.columns and not f_docs.empty:
+            st.markdown("---")
+            st.markdown("**🏢 Document Assignment by Department**")
+            
+            # Map visibility and department_codes to specific departments
+            def map_to_department(row):
+                vis = row.get("visibility", "")
+                dept_codes = row.get("department_codes", "")
+                
+                if vis == "ALL":
+                    return "ALL"
+                elif vis == "DEPARTMENT" and pd.notna(dept_codes) and dept_codes:
+                    # Return the actual department code(s)
+                    return dept_codes
+                elif vis in ["SPECIFIC_USERS", "SPECIFIC_ROLES", "ROLE_DEPARTMENT"]:
+                    return "Others (User Specific)"
+                else:
+                    return "Unassigned"
+            
+            f_docs["department"] = f_docs.apply(map_to_department, axis=1)
+            dept_counts = f_docs["department"].value_counts().reset_index()
+            dept_counts.columns = ["Department", "Count"]
+            
+            all_count = dept_counts[dept_counts["Department"] == "ALL"]["Count"].sum() if "ALL" in dept_counts["Department"].values else 0
+            st.caption(f"{all_count} documents accessible to all departments")
+            
+            fig = px.bar(dept_counts, x="Department", y="Count", color_discrete_sequence=PALETTE)
+            fig.update_layout(height=300, margin=dict(l=0, r=0, t=30, b=0))
+            st.plotly_chart(fig, use_container_width=True)
     else:
         st.info("No documents found or failed to load documents.")
 
