@@ -622,43 +622,7 @@ elif page == "Documents Analytics":
         # Charts only - no tables or filters
         f_docs = docs_df.copy()
         
-        # Row 1: Status & Timeline
-        c1, c2 = st.columns(2)
-        with c1:
-            st.markdown("**Status Distribution**")
-            s_counts = f_docs["status"].value_counts().reset_index()
-            s_counts.columns = ["status", "Count"]
-            top_status = s_counts.iloc[0]["status"] if not s_counts.empty else "N/A"
-            top_count = s_counts.iloc[0]["Count"] if not s_counts.empty else 0
-            st.caption(f"Most common: {top_status} ({top_count} documents)")
-            fig = px.bar(s_counts, x="Count", y="status", orientation="h", color="status", color_discrete_sequence=PALETTE)
-            fig.update_layout(height=350, margin=dict(l=0, r=0, t=30, b=0), showlegend=False)
-            st.plotly_chart(fig, use_container_width=True)
-        
-        with c2:
-            st.markdown("**Document Intake Over Time**")
-            if "date_received" in f_docs.columns and not f_docs.empty:
-                ts_data = f_docs.dropna(subset=["date_received"]).copy()
-                ts_data["month"] = pd.to_datetime(ts_data["date_received"]).dt.to_period("M").dt.to_timestamp()
-                ts = ts_data.groupby("month").size().reset_index(name="Documents")
-                
-                if len(ts) >= 2:
-                    recent_avg = ts.tail(3)["Documents"].mean()
-                    older_avg = ts.head(3)["Documents"].mean()
-                    if recent_avg > older_avg * 1.2:
-                        st.caption("Trend: Intake is increasing")
-                    elif recent_avg < older_avg * 0.8:
-                        st.caption("Trend: Intake is decreasing")
-                    else:
-                        st.caption("Trend: Intake remains stable")
-                
-                fig = px.line(ts, x="month", y="Documents", markers=True)
-                fig.update_layout(height=350, margin=dict(l=0, r=0, t=30, b=0))
-                st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.info("No date data available")
-
-        # Row 2: Folder & Doc Type
+        # Row: Folder & Doc Type
         st.markdown("---")
         c3, c4 = st.columns(2)
         
@@ -681,39 +645,67 @@ elif page == "Documents Analytics":
                 type_count = len(dt_counts)
                 st.caption(f"{type_count} document types")
                 fig = px.bar(dt_counts, x="Count", y="doc_type_name", orientation="h", color="doc_type_name", color_discrete_sequence=PALETTE)
+                fig.update_traces(texttemplate='%{x}', textposition='outside', hovertemplate='<b>%{y}</b><br>Documents: %{x}<extra></extra>', marker_line_color='#111', marker_line_width=0.5)
                 fig.update_layout(height=350, margin=dict(l=0, r=0, t=30, b=0), showlegend=False)
                 st.plotly_chart(fig, use_container_width=True)
         
-        # Row 3: Department Assignment
-        if "visibility" in f_docs.columns and not f_docs.empty:
-            st.markdown("---")
-            st.markdown("**🏢 Document Assignment by Department**")
-            
-            # Map visibility and department_codes to specific departments
-            def map_to_department(row):
-                vis = row.get("visibility", "")
-                dept_codes = row.get("department_codes", "")
-                
-                if vis == "ALL":
-                    return "ALL"
-                elif vis == "DEPARTMENT" and pd.notna(dept_codes) and dept_codes:
-                    # Return the actual department code(s)
-                    return dept_codes
-                elif vis in ["SPECIFIC_USERS", "SPECIFIC_ROLES", "ROLE_DEPARTMENT"]:
-                    return "Others (User Specific)"
+        # New: Document Availability Health
+        st.markdown("---")
+        st.markdown("**Document Availability Health**")
+        if "available_copy" in f_docs.columns and not f_docs.empty:
+            avail_series = f_docs["available_copy"].fillna(0)
+            def bucket_av(x):
+                try:
+                    v = int(x)
+                except Exception:
+                    v = 0
+                if v <= 0:
+                    return "0 copies"
+                elif v == 1:
+                    return "1 copy"
                 else:
-                    return "Unassigned"
-            
-            f_docs["department"] = f_docs.apply(map_to_department, axis=1)
-            dept_counts = f_docs["department"].value_counts().reset_index()
-            dept_counts.columns = ["Department", "Count"]
-            
-            all_count = dept_counts[dept_counts["Department"] == "ALL"]["Count"].sum() if "ALL" in dept_counts["Department"].values else 0
-            st.caption(f"{all_count} documents accessible to all departments")
-            
-            fig = px.bar(dept_counts, x="Department", y="Count", color_discrete_sequence=PALETTE)
-            fig.update_layout(height=300, margin=dict(l=0, r=0, t=30, b=0))
-            st.plotly_chart(fig, use_container_width=True)
+                    return "2+ copies"
+            buckets = avail_series.apply(bucket_av).value_counts().reindex(["0 copies","1 copy","2+ copies"], fill_value=0)
+            df_av = buckets.reset_index()
+            df_av.columns = ["Availability", "Count"]
+            fig_av = px.bar(df_av, x="Count", y="Availability", orientation="h", color="Availability", color_discrete_sequence=PALETTE)
+            fig_av.update_traces(texttemplate='%{x}', textposition='outside', hovertemplate='<b>%{y}</b><br>Documents: %{x}<extra></extra>', marker_line_color='#111', marker_line_width=0.5)
+            fig_av.update_layout(height=300, margin=dict(l=0, r=0, t=20, b=0), showlegend=False)
+            st.plotly_chart(fig_av, use_container_width=True)
+        else:
+            st.info("No availability data available")
+
+        # New: Visibility Mix
+        st.markdown("---")
+        st.markdown("**Visibility Mix**")
+        if "visibility" in f_docs.columns and not f_docs.empty:
+            vis_counts = f_docs["visibility"].fillna("(Unknown)").value_counts().reset_index()
+            vis_counts.columns = ["Visibility", "Count"]
+            fig_vis = px.bar(vis_counts, x="Count", y="Visibility", orientation="h", color="Visibility", color_discrete_sequence=PALETTE)
+            fig_vis.update_traces(texttemplate='%{x}', textposition='outside', hovertemplate='<b>%{y}</b><br>Documents: %{x}<extra></extra>', marker_line_color='#111', marker_line_width=0.5)
+            fig_vis.update_layout(height=320, margin=dict(l=0, r=0, t=20, b=0))
+            st.plotly_chart(fig_vis, use_container_width=True)
+        else:
+            st.info("No visibility data available")
+
+        # New: Top Document Types by Folder (stacked bar)
+        st.markdown("---")
+        st.markdown("**Top Document Types by Folder**")
+        if all(c in f_docs.columns for c in ["folder_name","doc_type_name"]) and not f_docs.empty:
+            top_folders = f_docs["folder_name"].fillna("(No Folder)").value_counts().head(8).index.tolist()
+            df_tf = f_docs.copy()
+            df_tf["folder_name"] = df_tf["folder_name"].fillna("(No Folder)")
+            df_tf["doc_type_name"] = df_tf["doc_type_name"].fillna("(No Type)")
+            df_tf = df_tf[df_tf["folder_name"].isin(top_folders)]
+            grouped = df_tf.groupby(["folder_name","doc_type_name"]).size().reset_index(name="Count")
+            totals = grouped.groupby("folder_name")["Count"].sum().sort_values(ascending=False)
+            grouped["folder_name"] = pd.Categorical(grouped["folder_name"], categories=totals.index.tolist(), ordered=True)
+            fig_stack = px.bar(grouped, x="Count", y="folder_name", color="doc_type_name", orientation="h", color_discrete_sequence=PALETTE)
+            fig_stack.update_traces(hovertemplate='<b>%{y}</b><br>%{legendgroup}: %{x}<extra></extra>')
+            fig_stack.update_layout(height=380, margin=dict(l=0, r=0, t=20, b=0), barmode='stack', legend_title_text='Doc Type')
+            st.plotly_chart(fig_stack, use_container_width=True)
+        else:
+            st.info("Insufficient data for type-by-folder chart")
     else:
         st.info("No documents found or failed to load documents.")
 
