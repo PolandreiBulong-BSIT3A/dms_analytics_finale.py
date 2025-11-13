@@ -183,7 +183,7 @@ with st.sidebar:
     # Folder filter (multiselect - will be populated dynamically)
     selected_folders = st.multiselect(
         "Select Folders",
-        options=[],
+        options=st.session_state.get("folder_filter_options", []),
         default=[],
         label_visibility="collapsed",
         placeholder="Select folders...",
@@ -196,11 +196,24 @@ with st.sidebar:
     # Document type filter (multiselect)
     selected_doc_types = st.multiselect(
         "Select Document Types",
-        options=[],
+        options=st.session_state.get("doctype_filter_options", []),
         default=[],
         label_visibility="collapsed",
         placeholder="Select document types...",
         key="doctype_filter"
+    )
+    
+    st.markdown("---")
+    st.markdown("### Contributor Filter")
+    
+    # Contributor filter (multiselect)
+    selected_contributors = st.multiselect(
+        "Select Contributors",
+        options=st.session_state.get("contrib_filter_options", []),
+        default=[],
+        label_visibility="collapsed",
+        placeholder="Select contributors...",
+        key="contrib_filter"
     )
     
     st.markdown("---")
@@ -336,15 +349,33 @@ if not docs_df_full.empty:
     folder_options = sorted(docs_df_full["folder_name"].dropna().unique().tolist())
     # Get unique document types
     doc_type_options = sorted(docs_df_full["doc_type_name"].dropna().unique().tolist())
+    # Get unique contributors
+    contrib_options = (
+        sorted(docs_df_full["created_by_name"].dropna().astype(str).unique().tolist())
+        if "created_by_name" in docs_df_full.columns else []
+    )
     
     # Update multiselect options using session state
-    if folder_options and "folder_filter" in st.session_state:
-        st.session_state.folder_filter_options = folder_options
-    if doc_type_options and "doctype_filter" in st.session_state:
-        st.session_state.doctype_filter_options = doc_type_options
+    rerun_needed = False
+    # Update options in session state and trigger rerun if they changed
+    if folder_options:
+        if st.session_state.get("folder_filter_options") != folder_options:
+            st.session_state.folder_filter_options = folder_options
+            rerun_needed = True
+    if doc_type_options:
+        if st.session_state.get("doctype_filter_options") != doc_type_options:
+            st.session_state.doctype_filter_options = doc_type_options
+            rerun_needed = True
+    if contrib_options:
+        if st.session_state.get("contrib_filter_options") != contrib_options:
+            st.session_state.contrib_filter_options = contrib_options
+            rerun_needed = True
+    if rerun_needed:
+        st.rerun()
 else:
     folder_options = []
     doc_type_options = []
+    contrib_options = []
 
 # Filter by departments (multiselect)
 if selected_departments and not docs_df_full.empty and "department_codes" in docs_df_full.columns:
@@ -373,6 +404,10 @@ if selected_folders and not docs_df_full.empty and "folder_name" in docs_df_full
 # Filter by document types (multiselect)
 if selected_doc_types and not docs_df_full.empty and "doc_type_name" in docs_df_full.columns:
     docs_df_full = docs_df_full[docs_df_full["doc_type_name"].isin(selected_doc_types)]
+
+# Filter by contributors (multiselect)
+if 'selected_contributors' in locals() and selected_contributors and not docs_df_full.empty and "created_by_name" in docs_df_full.columns:
+    docs_df_full = docs_df_full[docs_df_full["created_by_name"].isin(selected_contributors)]
 
 # Filter by status
 if selected_status != "All Status":
