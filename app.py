@@ -649,45 +649,27 @@ elif page == "Documents Analytics":
                 fig.update_layout(height=350, margin=dict(l=0, r=0, t=30, b=0), showlegend=False)
                 st.plotly_chart(fig, use_container_width=True)
         
-        # New: Document Availability Health (Copy Type preferred)
+        # New: Document Availability Health (based on available_copy enum)
         st.markdown("---")
         st.markdown("**Document Availability Health**")
-        if "copy_type" in f_docs.columns and not f_docs.empty:
-            def norm_copy_type(v: str) -> str:
+        if "available_copy" in f_docs.columns and not f_docs.empty:
+            # available_copy enum('hard_copy','soft_copy','both')
+            def norm_av(v: str) -> str:
                 s = str(v).strip().lower()
-                if s in ("soft_copy", "soft", "softcopy"):
+                if s == "soft_copy":
                     return "Soft copy"
-                if s in ("hard_copy", "hard", "hardcopy"):
+                if s == "hard_copy":
                     return "Hard copy"
-                if s in ("both", "soft_and_hard"):
+                if s == "both":
                     return "Both"
                 return "(Unknown)"
-            ct = f_docs["copy_type"].apply(norm_copy_type).value_counts().reindex(["Soft copy","Hard copy","Both","(Unknown)"], fill_value=0)
-            df_ct = ct.reset_index()
-            df_ct.columns = ["Copy Type", "Count"]
-            fig_av = px.bar(df_ct, x="Count", y="Copy Type", orientation="h", color="Copy Type", color_discrete_sequence=PALETTE)
+            series = f_docs["available_copy"].apply(norm_av)
+            counts = series.value_counts().reindex(["Soft copy","Hard copy","Both","(Unknown)"], fill_value=0)
+            df_av = counts.reset_index()
+            df_av.columns = ["Copy Type", "Count"]
+            fig_av = px.bar(df_av, x="Count", y="Copy Type", orientation="h", color="Copy Type", color_discrete_sequence=PALETTE)
             fig_av.update_traces(texttemplate='%{x}', textposition='outside', hovertemplate='<b>%{y}</b><br>Documents: %{x}<extra></extra>', marker_line_color='#111', marker_line_width=0.5)
             fig_av.update_layout(height=300, margin=dict(l=0, r=0, t=20, b=0))
-            st.plotly_chart(fig_av, use_container_width=True)
-        elif "available_copy" in f_docs.columns and not f_docs.empty:
-            avail_series = f_docs["available_copy"].fillna(0)
-            def bucket_av(x):
-                try:
-                    v = int(x)
-                except Exception:
-                    v = 0
-                if v <= 0:
-                    return "0 copies"
-                elif v == 1:
-                    return "1 copy"
-                else:
-                    return "2+ copies"
-            buckets = avail_series.apply(bucket_av).value_counts().reindex(["0 copies","1 copy","2+ copies"], fill_value=0)
-            df_av = buckets.reset_index()
-            df_av.columns = ["Availability", "Count"]
-            fig_av = px.bar(df_av, x="Count", y="Availability", orientation="h", color="Availability", color_discrete_sequence=PALETTE)
-            fig_av.update_traces(texttemplate='%{x}', textposition='outside', hovertemplate='<b>%{y}</b><br>Documents: %{x}<extra></extra>', marker_line_color='#111', marker_line_width=0.5)
-            fig_av.update_layout(height=300, margin=dict(l=0, r=0, t=20, b=0), showlegend=False)
             st.plotly_chart(fig_av, use_container_width=True)
         else:
             st.info("No availability data available")
