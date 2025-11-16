@@ -277,7 +277,6 @@ docs_q = """
            d.status,
            d.deleted,
            d.available_copy,
-           d.copy_type,
            d.visibility,
            d.date_received,
            d.created_at,
